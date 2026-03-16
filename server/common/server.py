@@ -1,5 +1,6 @@
 import socket
 import logging
+import signal
 
 
 class Server:
@@ -19,10 +20,15 @@ class Server:
         """
 
         # TODO: Modify this program to handle signal to graceful shutdown
-        # the server
-        while True:
-            client_sock = self.__accept_new_connection()
-            self.__handle_client_connection(client_sock)
+        # the server DONE!!
+        signal.signal(signal.SIGTERM, self.__handle_sigterm)
+
+        try:
+            while True:
+                client_sock = self.__accept_new_connection()
+                self.__handle_client_connection(client_sock)
+        except OSError:
+            logging.info('action: server_run | result: shutdown')
 
     def __handle_client_connection(self, client_sock):
         """
@@ -53,6 +59,15 @@ class Server:
 
         # Connection arrived
         logging.info('action: accept_connections | result: in_progress')
-        c, addr = self._server_socket.accept()
-        logging.info(f'action: accept_connections | result: success | ip: {addr[0]}')
+        try:
+            c, addr = self._server_socket.accept()
+            logging.info(f'action: accept_connections | result: success | ip: {addr[0]}')
+        except OSError as e:
+            logging.error(f'action: accept_connections | result: acceptor stopped | error: {e}')
+            raise
         return c
+
+    def __handle_sigterm(self, signum, frame):
+        logging.info('action: shutdown_server | result: in_progress')
+        self._server_socket.close()
+        logging.info('action: shutdown_server | result: success')

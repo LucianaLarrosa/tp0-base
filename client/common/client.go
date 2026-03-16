@@ -4,6 +4,7 @@ import (
 	"bufio"
 	"fmt"
 	"net"
+	"os"
 	"time"
 
 	"github.com/op/go-logging"
@@ -51,11 +52,19 @@ func (c *Client) createClientSocket() error {
 }
 
 // StartClientLoop Send messages to the client until some time threshold is met
-func (c *Client) StartClientLoop() {
+func (c *Client) StartClientLoop(signalChannel chan os.Signal) {
 	// There is an autoincremental msgID to identify every message sent
 	// Messages if the message amount threshold has not been surpassed
 	for msgID := 1; msgID <= c.config.LoopAmount; msgID++ {
 		// Create the connection the server in every loop iteration. Send an
+		select {
+		case <-signalChannel:
+			log.Info("action: shutdown | result: success | client_id: %v", c.config.ID)
+			return
+		default:
+			// Continue with the normal execution
+		}
+
 		c.createClientSocket()
 
 		// TODO: Modify the send to avoid short-write
