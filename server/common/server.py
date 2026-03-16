@@ -28,7 +28,7 @@ class Server:
                 client_sock = self.__accept_new_connection()
                 self.__handle_client_connection(client_sock)
         except OSError:
-            logging.info('action: server_run | result: shutdown')
+            logging.info('action: server_run | result: fail | error: {e}')
 
     def __handle_client_connection(self, client_sock):
         """
