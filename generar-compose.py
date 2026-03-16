@@ -47,7 +47,7 @@ def main():
                 "server"
             ],
             "volumes": [
-                f"./client{i}/config.yaml:/config.yaml"
+                "./client/config.yaml:/config.yaml"
             ]
         }
 
