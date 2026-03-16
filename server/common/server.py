@@ -63,7 +63,7 @@ class Server:
             c, addr = self._server_socket.accept()
             logging.info(f'action: accept_connections | result: success | ip: {addr[0]}')
         except OSError as e:
-            logging.error(f'action: accept_connections | result: acceptor stopped | error: {e}')
+            logging.error(f'action: accept_connections | result:  fail | error: {e}')
             raise
         return c
 
