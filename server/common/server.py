@@ -2,7 +2,7 @@ import socket
 import logging
 import signal
 from common.server_protocol import send_confirmation, receive_bet
-from utils import store_bets
+from common.utils import store_bets
 
 
 class Server:
