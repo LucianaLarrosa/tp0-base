@@ -106,6 +106,7 @@ func main() {
 	PrintConfig(v)
 
 	bet := common.Bet{
+		Agency:     v.GetString("id"),
 		Nombre:     os.Getenv("NOMBRE"),
 		Apellido:   os.Getenv("APELLIDO"),
 		Documento:  os.Getenv("DOCUMENTO"),

@@ -1,10 +1,4 @@
-class Bet:
-    def __init__(self, nombre, apellido, documento, nacimiento, numero):
-        self.nombre = nombre
-        self.apellido = apellido
-        self.documento = documento
-        self.nacimiento = nacimiento
-        self.numero = numero
+from common.utils import Bet
 
 def send_confirmation(sock):
     msg = b'1'
@@ -28,4 +22,4 @@ def receive_bet(sock):
             return None
         msg_recv += bytes_recv
     bet = msg_recv.decode().split(',')
-    return Bet(bet[0], bet[1], bet[2], bet[3], bet[4])
+    return Bet(bet[0], bet[1], bet[2], bet[3], bet[4], bet[5])

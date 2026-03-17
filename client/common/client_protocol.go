@@ -6,6 +6,7 @@ import (
 )
 
 type Bet struct {
+	Agency     string
 	Nombre     string
 	Apellido   string
 	Documento  string
@@ -14,8 +15,8 @@ type Bet struct {
 }
 
 func SendBet(bet Bet, conn net.Conn) error {
-	msg := fmt.Sprintf("%s,%s,%s,%s,%s",
-		bet.Nombre, bet.Apellido, bet.Documento, bet.Nacimiento, bet.Numero)
+	msg := fmt.Sprintf("%s,%s,%s,%s,%s,%s",
+		bet.Agency, bet.Nombre, bet.Apellido, bet.Documento, bet.Nacimiento, bet.Numero)
 
 	len_msg := len(msg)
 	n_sent_len, err := conn.Write([]byte(fmt.Sprintf("%04d", len_msg)))

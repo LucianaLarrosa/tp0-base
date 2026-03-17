@@ -43,7 +43,7 @@ class Server:
             bet = receive_bet(client_sock)
             if bet != None:
                 store_bets([bet])
-                logging.info(f'action: apuesta_almacenada | result: success | dni: {bet.documento} | numero: {bet.numero}')
+                logging.info(f'action: apuesta_almacenada | result: success | dni: {bet.document} | numero: {bet.number}')
             send_confirmation(client_sock)
         except OSError as e:
             logging.error(f'action: receive_message | result: fail | error: {e}')
