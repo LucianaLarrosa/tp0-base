@@ -1,8 +1,6 @@
 package common
 
 import (
-	"bufio"
-	"fmt"
 	"net"
 	"os"
 	"time"
@@ -18,6 +16,7 @@ type ClientConfig struct {
 	ServerAddress string
 	LoopAmount    int
 	LoopPeriod    time.Duration
+	Bet           Bet
 }
 
 // Client Entity that encapsulates how
@@ -55,11 +54,11 @@ func (c *Client) createClientSocket() error {
 func (c *Client) StartClientLoop(signalChannel chan os.Signal) {
 	// There is an autoincremental msgID to identify every message sent
 	// Messages if the message amount threshold has not been surpassed
-	for msgID := 1; msgID <= c.config.LoopAmount; msgID++ {
+	for i := 0; i < c.config.LoopAmount; i++ {
 		// Create the connection the server in every loop iteration. Send an
 		select {
 		case <-signalChannel:
-			log.Info("action: shutdown | result: success | client_id: %v", c.config.ID)
+			log.Infof("action: shutdown | result: success | client_id: %v", c.config.ID)
 			return
 		default:
 			// Continue with the normal execution
@@ -68,26 +67,29 @@ func (c *Client) StartClientLoop(signalChannel chan os.Signal) {
 		c.createClientSocket()
 
 		// TODO: Modify the send to avoid short-write
-		fmt.Fprintf(
-			c.conn,
-			"[CLIENT %v] Message N°%v\n",
-			c.config.ID,
-			msgID,
-		)
-		msg, err := bufio.NewReader(c.conn).ReadString('\n')
-		c.conn.Close()
-
+		err := SendBet(c.config.Bet, c.conn)
 		if err != nil {
-			log.Errorf("action: receive_message | result: fail | client_id: %v | error: %v",
-				c.config.ID,
-				err,
+			log.Errorf("action: apuesta_enviada | result: fail | dni: %s | numero: %s",
+				c.config.Bet.Documento,
+				c.config.Bet.Numero,
+			)
+			c.conn.Close()
+			return
+		}
+
+		err = ReceiveConfirmation(c.conn)
+		c.conn.Close()
+		if err != nil {
+			log.Errorf("action: apuesta_enviada | result: fail | dni: %s | numero: %s",
+				c.config.Bet.Documento,
+				c.config.Bet.Numero,
 			)
 			return
 		}
 
-		log.Infof("action: receive_message | result: success | client_id: %v | msg: %v",
-			c.config.ID,
-			msg,
+		log.Infof("action: apuesta_enviada | result: success | dni: %s | numero: %s",
+			c.config.Bet.Documento,
+			c.config.Bet.Numero,
 		)
 
 		// Wait a time between sending one message and the next one
