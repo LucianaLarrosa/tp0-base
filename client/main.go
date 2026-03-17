@@ -105,21 +105,12 @@ func main() {
 	// Print program config with debugging purposes
 	PrintConfig(v)
 
-	bet := common.Bet{
-		Agency:     v.GetString("id"),
-		Nombre:     os.Getenv("NOMBRE"),
-		Apellido:   os.Getenv("APELLIDO"),
-		Documento:  os.Getenv("DOCUMENTO"),
-		Nacimiento: os.Getenv("NACIMIENTO"),
-		Numero:     os.Getenv("NUMERO"),
-	}
-
 	clientConfig := common.ClientConfig{
-		ServerAddress: v.GetString("server.address"),
-		ID:            v.GetString("id"),
-		LoopAmount:    v.GetInt("loop.amount"),
-		LoopPeriod:    v.GetDuration("loop.period"),
-		Bet:           bet,
+		ServerAddress:  v.GetString("server.address"),
+		ID:             v.GetString("id"),
+		LoopAmount:     v.GetInt("loop.amount"),
+		LoopPeriod:     v.GetDuration("loop.period"),
+		BatchMaxAmount: v.GetInt("batch.max_amount"),
 	}
 
 	client := common.NewClient(clientConfig)

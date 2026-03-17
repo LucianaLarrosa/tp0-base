@@ -1,6 +1,7 @@
 package common
 
 import (
+	"fmt"
 	"net"
 	"os"
 	"time"
@@ -12,11 +13,11 @@ var log = logging.MustGetLogger("log")
 
 // ClientConfig Configuration used by the client
 type ClientConfig struct {
-	ID            string
-	ServerAddress string
-	LoopAmount    int
-	LoopPeriod    time.Duration
-	Bet           Bet
+	ID             string
+	ServerAddress  string
+	LoopAmount     int
+	LoopPeriod     time.Duration
+	BatchMaxAmount int
 }
 
 // Client Entity that encapsulates how
@@ -55,6 +56,7 @@ func (c *Client) createClientSocket() error {
 func (c *Client) StartClientLoop(signalChannel chan os.Signal) {
 	// There is an autoincremental msgID to identify every message sent
 	// Messages if the message amount threshold has not been surpassed
+	filepath := fmt.Sprintf("/data/agency-%d.csv", c.config.ID)
 	for i := 0; i < c.config.LoopAmount; i++ {
 		// Create the connection the server in every loop iteration. Send an
 		select {

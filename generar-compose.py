@@ -36,12 +36,7 @@ def main():
             "image": "client:latest",
             "entrypoint": "/client",
             "environment": [
-                f"CLI_ID={i}",
-                "NOMBRE=Santiago Lionel",
-                "APELLIDO=Lorca",
-                "DOCUMENTO=30904465",
-                "NACIMIENTO=1999-03-17",
-                "NUMERO=7574"
+                f"CLI_ID={i}"
             ],
             "networks": [
                 "testing_net"
@@ -50,7 +45,8 @@ def main():
                 "server"
             ],
             "volumes": [
-                "./client/config.yaml:/config.yaml"
+                "./client/config.yaml:/config.yaml",
+                f"./.data/dataset/agency-{i}.csv:/data/agency-{i}.csv"
             ]
         }
 
