@@ -45,6 +45,7 @@ func (c *Client) createClientSocket() error {
 			c.config.ID,
 			err,
 		)
+		return err
 	}
 	c.conn = conn
 	return nil
@@ -64,7 +65,9 @@ func (c *Client) StartClientLoop(signalChannel chan os.Signal) {
 			// Continue with the normal execution
 		}
 
-		c.createClientSocket()
+		if err := c.createClientSocket(); err != nil {
+			return
+		}
 
 		// TODO: Modify the send to avoid short-write
 		err := SendBet(c.config.Bet, c.conn)
