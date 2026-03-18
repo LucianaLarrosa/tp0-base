@@ -14,17 +14,18 @@ type Bet struct {
 	Numero     string
 }
 
-func SendBet(bet Bet, conn net.Conn) error {
-	msg := fmt.Sprintf("%s,%s,%s,%s,%s,%s",
-		bet.Agency, bet.Nombre, bet.Apellido, bet.Documento, bet.Nacimiento, bet.Numero)
-
-	len_msg := len(msg)
-	n_sent_len, err := conn.Write([]byte(fmt.Sprintf("%04d", len_msg)))
+func sendBatch(conn net.Conn, batch []Bet) error {
+	msg := ""
+	for _, bet := range batch {
+		msg += fmt.Sprintf("%s,%s,%s,%s,%s,%s\n",
+			bet.Agency, bet.Nombre, bet.Apellido, bet.Documento, bet.Nacimiento, bet.Numero)
+	}
+	n_sent_len, err := conn.Write([]byte(fmt.Sprintf("%04d", len(msg))))
 	if err != nil {
 		return err
 	}
 	for n_sent_len < 4 {
-		n, err := conn.Write([]byte(fmt.Sprintf("%04d", len_msg)[n_sent_len:]))
+		n, err := conn.Write([]byte(fmt.Sprintf("%04d", len(msg))[n_sent_len:]))
 		if err != nil {
 			return err
 		}
@@ -32,14 +33,17 @@ func SendBet(bet Bet, conn net.Conn) error {
 	}
 
 	n_sent, err := conn.Write([]byte(msg))
-	for n_sent < len_msg {
+	if err != nil {
+		return err
+	}
+	for n_sent < len(msg) {
 		n, err := conn.Write([]byte(msg[n_sent:]))
 		if err != nil {
 			return err
 		}
 		n_sent += n
 	}
-	return err
+	return nil
 }
 
 func ReceiveConfirmation(conn net.Conn) error {

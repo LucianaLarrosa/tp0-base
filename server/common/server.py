@@ -1,7 +1,7 @@
 import socket
 import logging
 import signal
-from common.server_protocol import send_confirmation, receive_bet
+from common.server_protocol import send_confirmation, receive_batch
 from common.utils import store_bets
 
 
@@ -29,7 +29,7 @@ class Server:
             while True:
                 client_sock = self.__accept_new_connection()
                 self.__handle_client_connection(client_sock)
-        except OSError:
+        except OSError as e:
             logging.info('action: server_run | result: fail | error: {e}')
 
     def __handle_client_connection(self, client_sock):
@@ -40,10 +40,10 @@ class Server:
         client socket will also be closed
         """
         try:
-            bet = receive_bet(client_sock)
-            if bet != None:
-                store_bets([bet])
-                logging.info(f'action: apuesta_almacenada | result: success | dni: {bet.document} | numero: {bet.number}')
+            bets = receive_batch(client_sock)
+            if bets:
+                store_bets(bets)
+                logging.info(f'action: apuesta_recibida | result: success | cantidad: {len(bets)}')
             send_confirmation(client_sock)
         except OSError as e:
             logging.error(f'action: receive_message | result: fail | error: {e}')

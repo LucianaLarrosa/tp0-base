@@ -1,6 +1,7 @@
 package common
 
 import (
+	"encoding/csv"
 	"fmt"
 	"net"
 	"os"
@@ -54,11 +55,17 @@ func (c *Client) createClientSocket() error {
 
 // StartClientLoop Send messages to the client until some time threshold is met
 func (c *Client) StartClientLoop(signalChannel chan os.Signal) {
-	// There is an autoincremental msgID to identify every message sent
-	// Messages if the message amount threshold has not been surpassed
-	filepath := fmt.Sprintf("/data/agency-%d.csv", c.config.ID)
-	for i := 0; i < c.config.LoopAmount; i++ {
-		// Create the connection the server in every loop iteration. Send an
+	filepath := fmt.Sprintf("/data/agency-%s.csv", c.config.ID)
+	file, err := os.Open(filepath)
+	if err != nil {
+		log.Criticalf("action: open_file | result: fail | error: %v", err)
+		return
+	}
+	defer file.Close()
+
+	reader := csv.NewReader(file)
+
+	for {
 		select {
 		case <-signalChannel:
 			log.Infof("action: shutdown | result: success | client_id: %v", c.config.ID)
@@ -67,37 +74,46 @@ func (c *Client) StartClientLoop(signalChannel chan os.Signal) {
 			// Continue with the normal execution
 		}
 
+		batch := []Bet{}
+		for i := 0; i < c.config.BatchMaxAmount; i++ {
+			line, err := reader.Read()
+			if err != nil {
+				break
+			}
+			batch = append(batch, Bet{
+				Agency:     c.config.ID,
+				Nombre:     line[0],
+				Apellido:   line[1],
+				Documento:  line[2],
+				Nacimiento: line[3],
+				Numero:     line[4],
+			})
+		}
+
+		if len(batch) == 0 {
+			break
+		}
+
 		if err := c.createClientSocket(); err != nil {
 			return
 		}
 
-		// TODO: Modify the send to avoid short-write
-		err := SendBet(c.config.Bet, c.conn)
-		if err != nil {
-			log.Errorf("action: apuesta_enviada | result: fail | dni: %s | numero: %s",
-				c.config.Bet.Documento,
-				c.config.Bet.Numero,
-			)
+		// Send the batch to the server
+		if err := sendBatch(c.conn, batch); err != nil {
+			log.Errorf("action: apuesta_enviada | result: fail | client_id: %v", c.config.ID)
 			c.conn.Close()
 			return
 		}
 
-		err = ReceiveConfirmation(c.conn)
-		c.conn.Close()
-		if err != nil {
-			log.Errorf("action: apuesta_enviada | result: fail | dni: %s | numero: %s",
-				c.config.Bet.Documento,
-				c.config.Bet.Numero,
-			)
+		if err := ReceiveConfirmation(c.conn); err != nil {
+			log.Errorf("action: apuesta_enviada | result: fail | client_id: %v", c.config.ID)
+			c.conn.Close()
 			return
 		}
 
-		log.Infof("action: apuesta_enviada | result: success | dni: %s | numero: %s",
-			c.config.Bet.Documento,
-			c.config.Bet.Numero,
-		)
+		log.Infof("action: apuesta_enviada | result: success | client_id: %v", c.config.ID)
+		c.conn.Close()
 
-		// Wait a time between sending one message and the next one
 		time.Sleep(c.config.LoopPeriod)
 
 	}

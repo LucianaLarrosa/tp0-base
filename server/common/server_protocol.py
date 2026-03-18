@@ -7,7 +7,7 @@ def send_confirmation(sock):
         n = sock.send(msg[sent:])
         sent += n
 
-def receive_bet(sock):
+def receive_batch(sock):
     len_recv_byte = b''
     while len(len_recv_byte) < 4:
         bytes_recv = sock.recv(4 - len(len_recv_byte))
@@ -21,5 +21,9 @@ def receive_bet(sock):
         if not bytes_recv:
             return None
         msg_recv += bytes_recv
-    bet = msg_recv.decode().split(',')
-    return Bet(bet[0], bet[1], bet[2], bet[3], bet[4], bet[5])
+    lines = msg_recv.decode().strip().split('\n')
+    bets = []
+    for line in lines:
+        fields = line.split(',')
+        bets.append(Bet(fields[0], fields[1], fields[2], fields[3], fields[4], fields[5]))
+    return bets
