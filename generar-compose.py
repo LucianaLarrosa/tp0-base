@@ -46,7 +46,7 @@ def main():
             ],
             "volumes": [
                 "./client/config.yaml:/config.yaml",
-                f"./.data/dataset/agency-{i}.csv:/data/agency-{i}.csv"
+                f"./.data/agency-{i}.csv:/data/agency-{i}.csv"
             ]
         }
 
