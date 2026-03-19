@@ -7,6 +7,13 @@ def send_confirmation(sock):
         n = sock.send(msg[sent:])
         sent += n
 
+def send_error(sock):
+    msg = b'0'
+    sent = 0
+    while sent < len(msg):
+        n = sock.send(msg[sent:])
+        sent += n
+
 def receive_batch(sock):
     len_recv_byte = b''
     while len(len_recv_byte) < 4:

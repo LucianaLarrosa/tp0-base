@@ -1,7 +1,7 @@
 import socket
 import logging
 import signal
-from common.server_protocol import send_confirmation, receive_batch
+from common.server_protocol import send_confirmation, receive_batch, send_error
 from common.utils import store_bets
 
 
@@ -39,14 +39,15 @@ class Server:
         If a problem arises in the communication with the client, the
         client socket will also be closed
         """
+        bets = []
         try:
             bets = receive_batch(client_sock)
-            if bets:
-                store_bets(bets)
-                logging.info(f'action: apuesta_recibida | result: success | cantidad: {len(bets)}')
+            store_bets(bets)
+            logging.info(f'action: apuesta_recibida | result: success | cantidad: {len(bets)}')
             send_confirmation(client_sock)
-        except OSError as e:
-            logging.error(f'action: receive_message | result: fail | error: {e}')
+        except Exception as e:
+            logging.error(f'action: apuesta_recibida | result: fail | cantidad: {len(bets)}')
+            send_error(client_sock)
         finally:
             client_sock.close()
 
