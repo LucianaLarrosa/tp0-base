@@ -24,7 +24,7 @@ def receive_message(sock):
     while len(header) < 5:
         n_recv = sock.recv(5-len(header))
         if not n_recv:
-            return None
+            raise OSError("Connection closed")
         header += n_recv
     
     msg_type = chr(header[0])
