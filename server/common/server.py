@@ -62,10 +62,7 @@ class Server:
                     logging.info('action: sorteo | result: success')
                     all_bets = list(load_bets())
                     for agency, sock in self._waiting_agencies.items():
-                        winners = []
-                        for bet in all_bets:
-                            if has_won(bet) and int(bet.agency) == int(agency):
-                                winners.append(str(bet.document))
+                        winners = self.__get_winners(agency, all_bets)
                         logging.info(f'action: send_winners | result: success | agency: {agency} | cant: {len(winners)}')
                         send_winners(sock, winners)
                         sock.close()
@@ -74,10 +71,7 @@ class Server:
                 agency_id = msg
                 if self._agencies_done == self._total_agencies:
                     all_bets = list(load_bets())
-                    winners = []
-                    for bet in all_bets:
-                        if has_won(bet) and int(bet.agency) == int(agency_id):
-                            winners.append(str(bet.document))
+                    winners = self.__get_winners(agency_id, all_bets)
                     logging.info(f'action: send_winners | result: success | agency: {agency_id} | cant: {len(winners)}')
                     send_winners(client_sock, winners)
                 else:
@@ -88,6 +82,13 @@ class Server:
         finally:
             if client_sock not in self._waiting_agencies.values():
                 client_sock.close()
+
+    def __get_winners(self, agency_id, all_bets):
+        winners = []
+        for bet in all_bets:
+            if has_won(bet) and int(bet.agency) == int(agency_id):
+                winners.append(str(bet.document))
+        return winners
 
     def __accept_new_connection(self):
         """
