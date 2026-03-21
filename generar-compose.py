@@ -20,7 +20,8 @@ def main():
             "image": "server:latest",
             "entrypoint": "python3 /main.py",
             "environment": [
-                "PYTHONUNBUFFERED=1"
+                "PYTHONUNBUFFERED=1",
+                f"AGENCIES={client_count}"
             ],
             "networks": [
                 "testing_net"
@@ -36,7 +37,7 @@ def main():
             "image": "client:latest",
             "entrypoint": "/client",
             "environment": [
-                f"CLI_ID={i}"
+                f"CLI_ID={i}",
             ],
             "networks": [
                 "testing_net"

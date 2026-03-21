@@ -8,11 +8,12 @@ MSG_TYPE_BATCH = 'B'
 MSG_TYPE_END   = 'E'
 MSG_TYPE_QUERY = 'Q'
 class Server:
-    def __init__(self, port, listen_backlog):
+    def __init__(self, port, listen_backlog, agencies):
         # Initialize server socket
         self._server_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         self._server_socket.bind(('', port))
         self._server_socket.listen(listen_backlog)
+        self._total_agencies = agencies
         self._agencies_done = 0
         self._waiting_agencies = {} #agencyID: socket
 
@@ -56,15 +57,14 @@ class Server:
                 logging.info(f'action: apuesta_recibida | result: success | cantidad: {len(bets)}')
                 send_confirmation(client_sock)
             elif msg_type == MSG_TYPE_END:
-                agency_id = msg
                 self._agencies_done += 1
-                if self._agencies_done == 5:
+                if self._agencies_done == self._total_agencies:
                     logging.info('action: sorteo | result: success')
                     all_bets = load_bets()
                     for agency, sock in self._waiting_agencies.items():
                         winners = []
                         for bet in all_bets:
-                            if has_won(bet) and str(bet.agency) == agency:
+                            if has_won(bet) and int(bet.agency) == int(agency):
                                 winners.append(str(bet.document))
                         logging.info(f'action: send_winners | result: success | agency: {agency} | cant: {len(winners)}')
                         send_winners(sock, winners)
@@ -72,11 +72,11 @@ class Server:
                     self._waiting_agencies.clear()
             elif msg_type == MSG_TYPE_QUERY:
                 agency_id = msg
-                if self._agencies_done == 5:
+                if self._agencies_done == self._total_agencies:
                     all_bets = load_bets()
                     winners = []
                     for bet in all_bets:
-                        if has_won(bet) and str(bet.agency) == agency_id:
+                        if has_won(bet) and int(bet.agency) == int(agency_id):
                             winners.append(str(bet.document))
                     send_winners(client_sock, winners)
                 else:
