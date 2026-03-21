@@ -66,7 +66,8 @@ class Server:
                         for bet in all_bets:
                             if has_won(bet) and str(bet.agency) == agency:
                                 winners.append(str(bet.document))
-                        send_winners(client_sock, winners)
+                        logging.info(f'action: send_winners | result: success | agency: {agency} | cant: {len(winners)}')
+                        send_winners(sock, winners)
                         sock.close()
                     self._waiting_agencies.clear()
             elif msg_type == MSG_TYPE_QUERY:
