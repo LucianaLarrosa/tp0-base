@@ -1,16 +1,20 @@
 import socket
 import logging
 import signal
-from common.server_protocol import send_confirmation, receive_batch, send_error
-from common.utils import store_bets
+from common.server_protocol import send_confirmation, send_error, send_winners, receive_message
+from common.utils import store_bets, Bet, load_bets, has_won
 
-
+MSG_TYPE_BATCH = 'B'
+MSG_TYPE_END   = 'E'
+MSG_TYPE_QUERY = 'Q'
 class Server:
     def __init__(self, port, listen_backlog):
         # Initialize server socket
         self._server_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         self._server_socket.bind(('', port))
         self._server_socket.listen(listen_backlog)
+        self._agencies_done = 0
+        self._waiting_agencies = {} #agencyID: socket
 
     def run(self):
         """
@@ -41,15 +45,47 @@ class Server:
         """
         bets = []
         try:
-            bets = receive_batch(client_sock)
-            store_bets(bets)
-            logging.info(f'action: apuesta_recibida | result: success | cantidad: {len(bets)}')
-            send_confirmation(client_sock)
+            msg_type, msg = receive_message(client_sock)
+            if msg_type == MSG_TYPE_BATCH:
+                lines = msg.strip().split('\n')
+                for line in lines:
+                    fields = line.split(',')
+                    bet = Bet(fields[0], fields[1], fields[2], fields[3], fields[4], fields[5])
+                    bets.append(bet)
+                store_bets(bets)
+                logging.info(f'action: apuesta_recibida | result: success | cantidad: {len(bets)}')
+                send_confirmation(client_sock)
+            elif msg_type == MSG_TYPE_END:
+                agency_id = msg
+                self._agencies_done += 1
+                if self._agencies_done == 5:
+                    logging.info('action: sorteo | result: success')
+                    all_bets = load_bets()
+                    for agency, sock in self._waiting_agencies.items():
+                        winners = []
+                        for bet in all_bets:
+                            if has_won(bet) and str(bet.agency) == agency:
+                                winners.append(str(bet.document))
+                        send_winners(client_sock, winners)
+                        sock.close()
+                    self._waiting_agencies.clear()
+            elif msg_type == MSG_TYPE_QUERY:
+                agency_id = msg
+                if self._agencies_done == 5:
+                    all_bets = load_bets()
+                    winners = []
+                    for bet in all_bets:
+                        if has_won(bet) and str(bet.agency) == agency_id:
+                            winners.append(str(bet.document))
+                    send_winners(client_sock, winners)
+                else:
+                    self._waiting_agencies[agency_id] = client_sock
         except Exception as e:
             logging.error(f'action: apuesta_recibida | result: fail | cantidad: {len(bets)}')
             send_error(client_sock)
         finally:
-            client_sock.close()
+            if client_sock not in self._waiting_agencies.values():
+                client_sock.close()
 
     def __accept_new_connection(self):
         """

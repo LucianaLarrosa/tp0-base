@@ -105,7 +105,7 @@ func (c *Client) StartClientLoop(signalChannel chan os.Signal) {
 			return
 		}
 
-		if err := ReceiveConfirmation(c.conn); err != nil {
+		if err := receiveConfirmation(c.conn); err != nil {
 			log.Errorf("action: apuesta_enviada | result: fail | client_id: %v", c.config.ID)
 			c.conn.Close()
 			return
@@ -118,4 +118,25 @@ func (c *Client) StartClientLoop(signalChannel chan os.Signal) {
 
 	}
 	log.Infof("action: loop_finished | result: success | client_id: %v", c.config.ID)
+
+	if err := c.createClientSocket(); err != nil {
+		return
+	}
+	if err := sendEnd(c.conn, c.config.ID); err != nil {
+		log.Errorf("action: send_end | result: fail | client_id: %v", c.config.ID)
+		c.conn.Close()
+		return
+	}
+	c.conn.Close()
+
+	if err := c.createClientSocket(); err != nil {
+		return
+	}
+	defer c.conn.Close()
+	winners, err := queryWinners(c.conn, c.config.ID)
+	if err != nil {
+		log.Errorf("action: consulta_ganadores | result: fail | client_id: %v", c.config.ID)
+		return
+	}
+	log.Infof("action: consulta_ganadores | result: success | cant_ganadores: %v", len(winners))
 }
