@@ -60,7 +60,7 @@ class Server:
                 self._agencies_done += 1
                 if self._agencies_done == self._total_agencies:
                     logging.info('action: sorteo | result: success')
-                    all_bets = load_bets()
+                    all_bets = list(load_bets())
                     for agency, sock in self._waiting_agencies.items():
                         winners = []
                         for bet in all_bets:
@@ -73,7 +73,7 @@ class Server:
             elif msg_type == MSG_TYPE_QUERY:
                 agency_id = msg
                 if self._agencies_done == self._total_agencies:
-                    all_bets = load_bets()
+                    all_bets = list(load_bets())
                     winners = []
                     for bet in all_bets:
                         if has_won(bet) and int(bet.agency) == int(agency_id):
