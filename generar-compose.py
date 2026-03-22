@@ -7,14 +7,16 @@ def create_client(n):
         "image": "client:latest",
         "entrypoint": "/client",
         "environment": [
-            f"CLI_ID={n}",
-            "CLI_LOG_LEVEL=DEBUG"
+            f"CLI_ID={n}"
         ],
         "networks": [
             "testing_net"
         ],
         "depends_on": [
             "server"
+        ],
+        "volumes": [
+            "./client/config.yaml:/config.yaml"
         ]
     }
 
@@ -24,11 +26,13 @@ def create_server():
         "image": "server:latest",
         "entrypoint": "python3 /main.py",
         "environment": [
-            "PYTHONUNBUFFERED=1",
-            "LOGGING_LEVEL=DEBUG"
+            "PYTHONUNBUFFERED=1"
         ],
         "networks": [
             "testing_net"
+        ],
+        "volumes": [
+            "./server/config.ini:/config.ini"
         ]
     }
 
