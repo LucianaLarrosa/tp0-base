@@ -95,8 +95,14 @@ func (c *Client) StartClientLoop(signalChannel chan os.Signal) {
 			c.config.Bet.Numero,
 		)
 
+		select {
+		case <-signalChannel:
+			log.Info("action: shutdown | result: success | client_id: %v", c.config.ID)
+			return
+		case <-time.After(c.config.LoopPeriod):
+		}
 		// Wait a time between sending one message and the next one
-		time.Sleep(c.config.LoopPeriod)
+		// time.Sleep(c.config.LoopPeriod)
 
 	}
 	log.Infof("action: loop_finished | result: success | client_id: %v", c.config.ID)

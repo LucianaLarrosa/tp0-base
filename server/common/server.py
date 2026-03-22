@@ -21,8 +21,7 @@ class Server:
         finishes, servers starts to accept new connections again
         """
 
-        # TODO: Modify this program to handle signal to graceful shutdown
-        # the server DONE!!
+        # Handle signal to graceful shutdown
         signal.signal(signal.SIGTERM, self.__handle_sigterm)
 
         try:
