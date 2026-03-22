@@ -187,3 +187,9 @@ Para generar el docker-compose con N clientes:
 ```./generar-compose.sh docker-compose-dev.yaml N```
 
 Luego ejecutar con ```make docker-compose-up```
+
+### Ejercicio 2
+En este ejercicio se agregaron volúmenes en el docker-compose para inyectar los archivos de configuración en los containers. Un volumen enlaza un archivo de la máquina host dentro del container, por lo que si se modifica la configuración no es necesario reconstruir la imagen (container lee el archivo actualizado del host). 
+El servidor enlaza `./server/config.ini` y cada cliente enlaza `./client/config.yaml`.
+
+La ejecución es igual que en el ejercicio 1.
