@@ -69,7 +69,6 @@ func (c *Client) StartClientLoop(signalChannel chan os.Signal) {
 			return
 		}
 
-		// TODO: Modify the send to avoid short-write
 		err := SendBet(c.config.Bet, c.conn)
 		if err != nil {
 			log.Errorf("action: apuesta_enviada | result: fail | dni: %s | numero: %s",
@@ -97,12 +96,10 @@ func (c *Client) StartClientLoop(signalChannel chan os.Signal) {
 
 		select {
 		case <-signalChannel:
-			log.Info("action: shutdown | result: success | client_id: %v", c.config.ID)
+			log.Infof("action: shutdown | result: success | client_id: %v", c.config.ID)
 			return
 		case <-time.After(c.config.LoopPeriod):
 		}
-		// Wait a time between sending one message and the next one
-		// time.Sleep(c.config.LoopPeriod)
 
 	}
 	log.Infof("action: loop_finished | result: success | client_id: %v", c.config.ID)

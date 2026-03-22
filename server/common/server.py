@@ -18,6 +18,7 @@ class Server:
 
         Server that accept a new connections and establishes a
         communication with a client. After client with communucation
+
         finishes, servers starts to accept new connections again
         """
 
@@ -40,10 +41,10 @@ class Server:
         """
         try:
             bet = receive_bet(client_sock)
-            if bet != None:
+            if bet is not None:
                 store_bets([bet])
                 logging.info(f'action: apuesta_almacenada | result: success | dni: {bet.document} | numero: {bet.number}')
-            send_confirmation(client_sock)
+                send_confirmation(client_sock)
         except OSError as e:
             logging.error(f'action: receive_message | result: fail | error: {e}')
         finally:

@@ -1,6 +1,7 @@
 package common
 
 import (
+	"encoding/binary"
 	"fmt"
 	"net"
 )
@@ -14,32 +15,35 @@ type Bet struct {
 	Numero     string
 }
 
-func SendBet(bet Bet, conn net.Conn) error {
-	msg := fmt.Sprintf("%s,%s,%s,%s,%s,%s",
+func serializeBet(bet Bet) string {
+	return fmt.Sprintf("%s,%s,%s,%s,%s,%s",
 		bet.Agency, bet.Nombre, bet.Apellido, bet.Documento, bet.Nacimiento, bet.Numero)
+}
 
-	len_msg := len(msg)
-	n_sent_len, err := conn.Write([]byte(fmt.Sprintf("%04d", len_msg)))
-	if err != nil {
-		return err
-	}
+func SendBet(bet Bet, conn net.Conn) error {
+	msg := serializeBet(bet)
+
+	lenBytes := make([]byte, 4)
+	binary.BigEndian.PutUint32(lenBytes, uint32(len(msg)))
+	n_sent_len := 0
 	for n_sent_len < 4 {
-		n, err := conn.Write([]byte(fmt.Sprintf("%04d", len_msg)[n_sent_len:]))
+		n, err := conn.Write(lenBytes[n_sent_len:])
 		if err != nil {
 			return err
 		}
 		n_sent_len += n
 	}
 
-	n_sent, err := conn.Write([]byte(msg))
-	for n_sent < len_msg {
-		n, err := conn.Write([]byte(msg[n_sent:]))
+	msgBytes := []byte(msg)
+	n_sent := 0
+	for n_sent < len(msgBytes) {
+		n, err := conn.Write(msgBytes[n_sent:])
 		if err != nil {
 			return err
 		}
 		n_sent += n
 	}
-	return err
+	return nil
 }
 
 func ReceiveConfirmation(conn net.Conn) error {
