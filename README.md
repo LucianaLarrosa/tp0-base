@@ -209,3 +209,16 @@ En este ejercicio se implementó el manejo de SIGTERM para cerrar el cliente y e
 **Cliente:** Se utiliza un canal de señales que recibe SIGTERM. En el loop principal hay 2 `select`: uno al comienzo de cada iteración para detectar la señal antes de conectarse al servidor, y otro en lugar del `time.Sleep` para interrumpir el sleep inmediatamente si llega la señal.
 
 **Servidor:** Se registra un handler para SIGTERM que cierra el socket del servidor. Al hacer esto, el `accept()` lanza un error, que se captura con un `try/except` en el loop principal para terminar limpiamente. 
+
+### Ejercicio 5
+En este ejercicio se implementó el protocolo de comunicación entre cliente y servidor para el envío de apuestas.
+
+El protocolo define los mensajes como: `[4 bytes longitud] [N bytes cuerpo]`, donde primero se envía la longitud del cuerpo y luego el cuerpo en sí. 
+
+La longitud está codificada en binario big-endian y el cuerpo es la apuesta serializada en el formato: `agencia,nombre,apellido,documento,nacimiento,numero`.
+El servidor responde con 1 byte de confirmación al recibir la apuesta.
+Cada apuesta se envía en una conexión TCP separada. 
+
+Para garantizar que todos los bytes se transmitan correctamente, tanto el envío como la recepción utilizan loops que manejan short-reads y short-writes.
+
+Se separó la lógica del protocolo en 2 archivos: `client_protocol.go` y `server_protocol.py`. 
