@@ -193,3 +193,12 @@ En este ejercicio se agregaron volúmenes en el docker-compose para inyectar los
 El servidor enlaza `./server/config.ini` y cada cliente enlaza `./client/config.yaml`.
 
 La ejecución es igual que en el ejercicio 1.
+
+### Ejercicio 3
+En este ejercicio se creó el script `validar-echo-server.sh` que verifica el funcionamiento del echo server. 
+El script envía un mensaje al servidor usando netcat desde un container alpine en la misma red de docker, y comprueba que la respuesta recibida sea igual a la enviada. 
+
+Ejecución:
+
+Con el sistema corriendo (ejercicio 1) ejecutar:
+```./validar-echo-server.sh```
