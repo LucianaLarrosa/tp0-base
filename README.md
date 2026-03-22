@@ -202,3 +202,10 @@ Ejecución:
 
 Con el sistema corriendo (ejercicio 1) ejecutar:
 ```./validar-echo-server.sh```
+
+### Ejercicio 4
+En este ejercicio se implementó el manejo de SIGTERM para cerrar el cliente y el servidor de forma ordenada. 
+
+**Cliente:** Se utiliza un canal de señales que recibe SIGTERM. En el loop principal hay 2 `select`: uno al comienzo de cada iteración para detectar la señal antes de conectarse al servidor, y otro en lugar del `time.Sleep` para interrumpir el sleep inmediatamente si llega la señal.
+
+**Servidor:** Se registra un handler para SIGTERM que cierra el socket del servidor. Al hacer esto, el `accept()` lanza un error, que se captura con un `try/except` en el loop principal para terminar limpiamente. 
