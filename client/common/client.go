@@ -106,7 +106,8 @@ func (c *Client) StartClientLoop(signalChannel chan os.Signal) {
 			return
 		}
 
-		if err := ReceiveConfirmation(c.conn); err != nil {
+		confirmation, _ := ReceiveConfirmation(c.conn)
+		if confirmation == '0' {
 			log.Errorf("action: apuesta_enviada | result: fail | client_id: %v", c.config.ID)
 			c.conn.Close()
 			return

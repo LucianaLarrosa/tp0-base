@@ -56,6 +56,10 @@ def deserialize_bet(msg):
 def deserialize_batch(msg):
     msg_bets = msg.strip().split('\n')
     bets = []
+    has_error = False
     for line in msg_bets:
-        bets.append(deserialize_bet(line))
-    return bets
+        try:
+            bets.append(deserialize_bet(line))
+        except Exception as e:
+            has_error = True
+    return bets, has_error

@@ -1,7 +1,7 @@
 import socket
 import logging
 import signal
-from common.server_protocol import send_confirmation, receive_batch, send_error
+from common.server_protocol import send_confirmation, receive_message, send_error
 from common.utils import store_bets, deserialize_batch
 
 
@@ -41,14 +41,17 @@ class Server:
         """
         bets = []
         try:
-            msg = receive_batch(client_sock)
-            bets = deserialize_batch(msg)
+            msg = receive_message(client_sock)
+            bets, has_error = deserialize_batch(msg)
             store_bets(bets)
-            logging.info(f'action: apuesta_recibida | result: success | cantidad: {len(bets)}')
-            send_confirmation(client_sock)
-        except Exception as e:
-            logging.error(f'action: apuesta_recibida | result: fail | cantidad: {len(bets)}')
-            send_error(client_sock)
+            if not has_error:
+                logging.info(f'action: apuesta_recibida | result: success | cantidad: {len(bets)}')
+                send_confirmation(client_sock)
+            else:
+                logging.error(f'action: apuesta_recibida | result: fail | cantidad: {len(bets)}')
+                send_error(client_sock)
+        except OSError as e:
+            logging.error(f'action: receive_message | result: fail | error: {e}')
         finally:
             client_sock.close()
 

@@ -10,7 +10,7 @@ def send_confirmation(sock):
 def send_error(sock):
     sock.send(ERROR_MSG)
 
-def receive_batch(sock):
+def receive_message(sock):
     len_recv_byte = b''
     while len(len_recv_byte) < LENGTH_SIZE:
         bytes_recv = sock.recv(LENGTH_SIZE - len(len_recv_byte))
