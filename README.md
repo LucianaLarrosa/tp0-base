@@ -213,7 +213,7 @@ En este ejercicio se implementó el manejo de SIGTERM para cerrar el cliente y e
 ### Ejercicio 5
 En este ejercicio se implementó el protocolo de comunicación entre cliente y servidor para el envío de apuestas.
 
-El protocolo define los mensajes como: `[4 bytes longitud] [N bytes cuerpo]`, donde primero se envía la longitud del cuerpo y luego el cuerpo en sí. 
+El protocolo define los mensajes como: `[4 bytes longitud][N bytes cuerpo]`, donde ambos se concatenan y se envían juntos en un único write. 
 
 La longitud está codificada en binario big-endian y el cuerpo es la apuesta serializada en el formato: `agencia,nombre,apellido,documento,nacimiento,numero`.
 El servidor responde con 1 byte de confirmación al recibir la apuesta.

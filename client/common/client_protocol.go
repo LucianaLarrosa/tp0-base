@@ -6,6 +6,10 @@ import (
 	"net"
 )
 
+const (
+	LengthSize = 4
+)
+
 type Bet struct {
 	Agency     string
 	Nombre     string
@@ -23,21 +27,14 @@ func serializeBet(bet Bet) string {
 func SendBet(bet Bet, conn net.Conn) error {
 	msg := serializeBet(bet)
 
-	lenBytes := make([]byte, 4)
-	binary.BigEndian.PutUint32(lenBytes, uint32(len(msg)))
-	n_sent_len := 0
-	for n_sent_len < 4 {
-		n, err := conn.Write(lenBytes[n_sent_len:])
-		if err != nil {
-			return err
-		}
-		n_sent_len += n
-	}
-
 	msgBytes := []byte(msg)
+	lenBytes := make([]byte, LengthSize)
+	binary.BigEndian.PutUint32(lenBytes, uint32(len(msg)))
+	total := append(lenBytes, msgBytes...)
+
 	n_sent := 0
-	for n_sent < len(msgBytes) {
-		n, err := conn.Write(msgBytes[n_sent:])
+	for n_sent < len(total) {
+		n, err := conn.Write(total[n_sent:])
 		if err != nil {
 			return err
 		}
