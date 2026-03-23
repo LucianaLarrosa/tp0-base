@@ -47,7 +47,7 @@ func (c *Client) createClientSocket() error {
 			c.conn = conn
 			return nil
 		}
-		log.Infof("action: connect | result: retry | client_id: %v | attempt: %v", c.config.ID, i+1)
+		log.Debugf("Retrying connection | result: retry | client_id: %v | attempt: %v", c.config.ID, i+1)
 		time.Sleep(500 * time.Millisecond)
 	}
 	log.Criticalf("action: connect | result: fail | client_id: %v", c.config.ID)
