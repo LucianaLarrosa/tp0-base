@@ -1,12 +1,7 @@
-from common.utils import Bet
 import struct
 
 CONFIRMATION_MSG = b'1'
 LENGTH_SIZE = 4
-
-def deserialize_bet(msg):
-    fields = msg.decode().split(',')
-    return Bet(fields[0], fields[1], fields[2], fields[3], fields[4], fields[5])
 
 def send_confirmation(sock):
     sent = 0
@@ -14,7 +9,7 @@ def send_confirmation(sock):
         n = sock.send(CONFIRMATION_MSG[sent:])
         sent += n
 
-def receive_bet(sock):
+def receive_message(sock):
     len_recv_byte = b''
     while len(len_recv_byte) < LENGTH_SIZE:
         bytes_recv = sock.recv(LENGTH_SIZE - len(len_recv_byte))
@@ -28,4 +23,4 @@ def receive_bet(sock):
         if not bytes_recv:
             return None
         msg_recv += bytes_recv
-    return deserialize_bet(msg_recv)
+    return msg_recv.decode()

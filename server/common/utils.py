@@ -49,3 +49,6 @@ def load_bets() -> list[Bet]:
         for row in reader:
             yield Bet(row[0], row[1], row[2], row[3], row[4], row[5])
 
+def deserialize_bet(msg):
+    fields = msg.split(',')
+    return Bet(fields[0], fields[1], fields[2], fields[3], fields[4], fields[5])

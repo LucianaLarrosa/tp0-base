@@ -1,8 +1,8 @@
 import socket
 import logging
 import signal
-from common.server_protocol import send_confirmation, receive_bet
-from common.utils import store_bets
+from common.server_protocol import send_confirmation, receive_message
+from common.utils import store_bets, deserialize_bet
 
 
 class Server:
@@ -40,7 +40,8 @@ class Server:
         client socket will also be closed
         """
         try:
-            bet = receive_bet(client_sock)
+            recv_string = receive_message(client_sock)
+            bet = deserialize_bet(recv_string)
             if bet is not None:
                 store_bets([bet])
                 logging.info(f'action: apuesta_almacenada | result: success | dni: {bet.document} | numero: {bet.number}')

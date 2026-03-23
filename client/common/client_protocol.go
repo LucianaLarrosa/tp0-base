@@ -2,7 +2,6 @@ package common
 
 import (
 	"encoding/binary"
-	"fmt"
 	"net"
 )
 
@@ -10,23 +9,7 @@ const (
 	LengthSize = 4
 )
 
-type Bet struct {
-	Agency     string
-	Nombre     string
-	Apellido   string
-	Documento  string
-	Nacimiento string
-	Numero     string
-}
-
-func serializeBet(bet Bet) string {
-	return fmt.Sprintf("%s,%s,%s,%s,%s,%s",
-		bet.Agency, bet.Nombre, bet.Apellido, bet.Documento, bet.Nacimiento, bet.Numero)
-}
-
-func SendBet(bet Bet, conn net.Conn) error {
-	msg := serializeBet(bet)
-
+func SendMessage(msg string, conn net.Conn) error {
 	msgBytes := []byte(msg)
 	lenBytes := make([]byte, LengthSize)
 	binary.BigEndian.PutUint32(lenBytes, uint32(len(msg)))

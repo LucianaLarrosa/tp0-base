@@ -71,7 +71,8 @@ func (c *Client) StartClientLoop(signalChannel chan os.Signal) {
 			return
 		}
 
-		err := SendBet(c.config.Bet, c.conn)
+		msg := serializeBet(c.config.Bet)
+		err := SendMessage(msg, c.conn)
 		if err != nil {
 			log.Errorf("action: apuesta_enviada | result: fail | dni: %s | numero: %s",
 				c.config.Bet.Documento,
