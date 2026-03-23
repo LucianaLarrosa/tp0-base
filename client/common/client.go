@@ -82,9 +82,9 @@ func (c *Client) StartClientLoop(signalChannel chan os.Signal) {
 			return
 		}
 
-		err = ReceiveConfirmation(c.conn)
+		confirmation, err := ReceiveConfirmation(c.conn)
 		c.conn.Close()
-		if err != nil {
+		if confirmation == '0' {
 			log.Errorf("action: apuesta_enviada | result: fail | dni: %s | numero: %s",
 				c.config.Bet.Documento,
 				c.config.Bet.Numero,

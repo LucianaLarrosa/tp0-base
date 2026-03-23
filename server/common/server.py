@@ -1,7 +1,7 @@
 import socket
 import logging
 import signal
-from common.server_protocol import send_confirmation, receive_message
+from common.server_protocol import send_confirmation, receive_message, send_error
 from common.utils import store_bets, deserialize_bet
 
 
@@ -42,12 +42,14 @@ class Server:
         try:
             recv_string = receive_message(client_sock)
             bet = deserialize_bet(recv_string)
-            if bet is not None:
-                store_bets([bet])
-                logging.info(f'action: apuesta_almacenada | result: success | dni: {bet.document} | numero: {bet.number}')
-                send_confirmation(client_sock)
+            store_bets([bet])
+            logging.info(f'action: apuesta_almacenada | result: success | dni: {bet.document} | numero: {bet.number}')
+            send_confirmation(client_sock)
         except OSError as e:
             logging.error(f'action: receive_message | result: fail | error: {e}')
+        except Exception as e:
+            logging.info(f'action: apuesta_almacenada | result: fail | error: {e}')
+            send_error(client_sock)
         finally:
             client_sock.close()
 
