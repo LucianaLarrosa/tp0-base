@@ -2,7 +2,7 @@ import socket
 import logging
 import signal
 from common.server_protocol import send_confirmation, receive_batch, send_error
-from common.utils import store_bets
+from common.utils import store_bets, deserialize_batch
 
 
 class Server:
@@ -18,11 +18,11 @@ class Server:
 
         Server that accept a new connections and establishes a
         communication with a client. After client with communucation
+
         finishes, servers starts to accept new connections again
         """
 
-        # TODO: Modify this program to handle signal to graceful shutdown
-        # the server DONE!!
+        # Handle signal to graceful shutdown
         signal.signal(signal.SIGTERM, self.__handle_sigterm)
 
         try:
@@ -41,7 +41,8 @@ class Server:
         """
         bets = []
         try:
-            bets = receive_batch(client_sock)
+            msg = receive_batch(client_sock)
+            bets = deserialize_batch(msg)
             store_bets(bets)
             logging.info(f'action: apuesta_recibida | result: success | cantidad: {len(bets)}')
             send_confirmation(client_sock)

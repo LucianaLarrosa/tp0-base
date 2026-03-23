@@ -40,17 +40,18 @@ func NewClient(config ClientConfig) *Client {
 // failure, error is printed in stdout/stderr and exit 1
 // is returned
 func (c *Client) createClientSocket() error {
-	conn, err := net.Dial("tcp", c.config.ServerAddress)
-	if err != nil {
-		log.Criticalf(
-			"action: connect | result: fail | client_id: %v | error: %v",
-			c.config.ID,
-			err,
-		)
-		return err
+	maxRetries := 5
+	for i := 0; i < maxRetries; i++ {
+		conn, err := net.Dial("tcp", c.config.ServerAddress)
+		if err == nil {
+			c.conn = conn
+			return nil
+		}
+		log.Infof("action: connect | result: retry | client_id: %v | attempt: %v", c.config.ID, i+1)
+		time.Sleep(500 * time.Millisecond)
 	}
-	c.conn = conn
-	return nil
+	log.Criticalf("action: connect | result: fail | client_id: %v", c.config.ID)
+	return fmt.Errorf("Could not connect after %d retries", maxRetries)
 }
 
 // StartClientLoop Send messages to the client until some time threshold is met
@@ -99,7 +100,7 @@ func (c *Client) StartClientLoop(signalChannel chan os.Signal) {
 		}
 
 		// Send the batch to the server
-		if err := sendBatch(c.conn, batch); err != nil {
+		if err := SendMessage(serializeBatch(batch), c.conn); err != nil {
 			log.Errorf("action: apuesta_enviada | result: fail | client_id: %v", c.config.ID)
 			c.conn.Close()
 			return
@@ -114,7 +115,12 @@ func (c *Client) StartClientLoop(signalChannel chan os.Signal) {
 		log.Infof("action: apuesta_enviada | result: success | client_id: %v", c.config.ID)
 		c.conn.Close()
 
-		time.Sleep(c.config.LoopPeriod)
+		select {
+		case <-signalChannel:
+			log.Infof("action: shutdown | result: success | client_id: %v", c.config.ID)
+			return
+		case <-time.After(c.config.LoopPeriod):
+		}
 
 	}
 	log.Infof("action: loop_finished | result: success | client_id: %v", c.config.ID)

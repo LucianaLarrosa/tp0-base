@@ -1,36 +1,28 @@
-from common.utils import Bet
+import struct
+
+CONFIRMATION_MSG = b'1'
+ERROR_MSG = b'0'
+LENGTH_SIZE = 4
 
 def send_confirmation(sock):
-    msg = b'1'
-    sent = 0
-    while sent < len(msg):
-        n = sock.send(msg[sent:])
-        sent += n
+    sock.send(CONFIRMATION_MSG)
 
 def send_error(sock):
-    msg = b'0'
-    sent = 0
-    while sent < len(msg):
-        n = sock.send(msg[sent:])
-        sent += n
+    sock.send(ERROR_MSG)
 
 def receive_batch(sock):
     len_recv_byte = b''
-    while len(len_recv_byte) < 4:
-        bytes_recv = sock.recv(4 - len(len_recv_byte))
+    while len(len_recv_byte) < LENGTH_SIZE:
+        bytes_recv = sock.recv(LENGTH_SIZE - len(len_recv_byte))
         if not bytes_recv:
             return None
         len_recv_byte += bytes_recv
-    msg_len = int(len_recv_byte.decode())
+    msg_len = struct.unpack('>I', len_recv_byte)[0]
     msg_recv = b''
     while len(msg_recv) < msg_len:
         bytes_recv = sock.recv(msg_len - len(msg_recv))
         if not bytes_recv:
             return None
         msg_recv += bytes_recv
-    lines = msg_recv.decode().strip().split('\n')
-    bets = []
-    for line in lines:
-        fields = line.split(',')
-        bets.append(Bet(fields[0], fields[1], fields[2], fields[3], fields[4], fields[5]))
-    return bets
+    return msg_recv.decode()
+    
