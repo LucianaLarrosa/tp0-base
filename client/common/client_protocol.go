@@ -6,7 +6,8 @@ import (
 )
 
 const (
-	LengthSize = 4
+	LengthSize         = 4
+	LengthConfirmation = 1
 )
 
 func SendMessage(msg string, conn net.Conn) error {
@@ -27,7 +28,7 @@ func SendMessage(msg string, conn net.Conn) error {
 }
 
 func ReceiveConfirmation(conn net.Conn) error {
-	len_recv_byte := make([]byte, 1)
+	len_recv_byte := make([]byte, LengthConfirmation)
 	_, err := conn.Read(len_recv_byte)
 	return err
 }
