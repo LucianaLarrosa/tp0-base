@@ -222,3 +222,12 @@ Cada apuesta se envía en una conexión TCP separada.
 Para garantizar que todos los bytes se transmitan correctamente, tanto el envío como la recepción utilizan loops que manejan short-reads y short-writes.
 
 Se separó la lógica del protocolo en 2 archivos: `client_protocol.go` y `server_protocol.py`. 
+
+### Ejercicio 6
+En este ejercicio se modificó el cliente para enviar apuestas en batches. El cliente lee el archivo CSV de su agencia y arma batches de apuestas que envía al servidor en una sola conexión.
+
+La cantidad máxima de apuestas por batch es configurable desde `config.yaml`. Se limita a 100 apuestas para garantizar que los paquetes no superen los 8kB (asumiendo un tamaño máximo de 80 bytes por apuesta: 100 x 80 = 8000 bytes < 8192 bytes). 
+
+El protocolo es el mismo que en el ej5, pero ahora el cuerpo contiene múltiples apuestas separadas por `\n`.
+
+El servidor responde con 1 byte: `1` si todas las apuestas del batch fueron procesadas correctamente, y `0` si alguna fue inválida. En ambos casos se guardan las apuestas válidas. El cliente loguea el resultado según la respuesta recibida. 
