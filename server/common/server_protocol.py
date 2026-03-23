@@ -4,10 +4,7 @@ CONFIRMATION_MSG = b'1'
 LENGTH_SIZE = 4
 
 def send_confirmation(sock):
-    sent = 0
-    while sent < len(CONFIRMATION_MSG):
-        n = sock.send(CONFIRMATION_MSG[sent:])
-        sent += n
+    sock.send(CONFIRMATION_MSG)
 
 def receive_message(sock):
     len_recv_byte = b''
