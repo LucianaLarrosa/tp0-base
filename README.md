@@ -179,3 +179,55 @@ Se proveen [pruebas automáticas](https://github.com/7574-sistemas-distribuidos/
 
 El incumplimiento de las pruebas es condición de desaprobación, pero su cumplimiento no es suficiente para la aprobación.  Se pide a los alumnos leer atentamente y **tener en cuenta** los criterios de corrección informados  [en el campus](https://campusgrado.fi.uba.ar/mod/page/view.php?id=73393).
 Respetar el formato y contenido las entradas de logs descritas en los ejercicios, pues son las que se chequean en cada uno de los tests.
+
+## Resolución
+
+### Ejercicio 1
+Para generar el docker-compose con N clientes:
+```./generar-compose.sh docker-compose-dev.yaml N```
+
+Luego ejecutar con ```make docker-compose-up```
+
+### Ejercicio 2
+En este ejercicio se agregaron volúmenes en el docker-compose para inyectar los archivos de configuración en los containers. Un volumen enlaza un archivo de la máquina host dentro del container, por lo que si se modifica la configuración no es necesario reconstruir la imagen (container lee el archivo actualizado del host). 
+El servidor enlaza `./server/config.ini` y cada cliente enlaza `./client/config.yaml`.
+
+La ejecución es igual que en el ejercicio 1.
+
+### Ejercicio 3
+En este ejercicio se creó el script `validar-echo-server.sh` que verifica el funcionamiento del echo server. 
+El script envía un mensaje al servidor usando netcat desde un container alpine en la misma red de docker, y comprueba que la respuesta recibida sea igual a la enviada. 
+
+Ejecución:
+
+Con el sistema corriendo (ejercicio 1) ejecutar:
+```./validar-echo-server.sh```
+
+### Ejercicio 4
+En este ejercicio se implementó el manejo de SIGTERM para cerrar el cliente y el servidor de forma ordenada. 
+
+**Cliente:** Se utiliza un canal de señales que recibe SIGTERM. En el loop principal hay 2 `select`: uno al comienzo de cada iteración para detectar la señal antes de conectarse al servidor, y otro en lugar del `time.Sleep` para interrumpir el sleep inmediatamente si llega la señal.
+
+**Servidor:** Se registra un handler para SIGTERM que cierra el socket del servidor. Al hacer esto, el `accept()` lanza un error, que se captura con un `try/except` en el loop principal para terminar limpiamente. 
+
+### Ejercicio 5
+En este ejercicio se implementó el protocolo de comunicación entre cliente y servidor para el envío de apuestas.
+
+El protocolo define los mensajes como: `[4 bytes longitud][N bytes cuerpo]`, donde ambos se concatenan y se envían juntos en un único write. 
+
+La longitud está codificada en binario big-endian y el cuerpo es la apuesta serializada en el formato: `agencia,nombre,apellido,documento,nacimiento,numero`.
+El servidor responde con 1 byte de confirmación al recibir la apuesta.
+Cada apuesta se envía en una conexión TCP separada. 
+
+Para garantizar que todos los bytes se transmitan correctamente, tanto el envío como la recepción utilizan loops que manejan short-reads y short-writes.
+
+Se separó la lógica del protocolo en 2 archivos: `client_protocol.go` y `server_protocol.py`. 
+
+### Ejercicio 6
+En este ejercicio se modificó el cliente para enviar apuestas en batches. El cliente lee el archivo CSV de su agencia y arma batches de apuestas que envía al servidor en una sola conexión.
+
+La cantidad máxima de apuestas por batch es configurable desde `config.yaml`. Se limita a 100 apuestas para garantizar que los paquetes no superen los 8kB (asumiendo un tamaño máximo de 80 bytes por apuesta: 100 x 80 = 8000 bytes < 8192 bytes). 
+
+El protocolo es el mismo que en el ej5, pero ahora el cuerpo contiene múltiples apuestas separadas por `\n`.
+
+El servidor responde con 1 byte: `1` si todas las apuestas del batch fueron procesadas correctamente, y `0` si alguna fue inválida. En ambos casos se guardan las apuestas válidas. El cliente loguea el resultado según la respuesta recibida. 

@@ -1,29 +1,17 @@
 package common
 
 import (
-	"fmt"
+	"encoding/binary"
 	"net"
-	"strconv"
-	"strings"
-)
-
-type Bet struct {
-	Agency     string
-	Nombre     string
-	Apellido   string
-	Documento  string
-	Nacimiento string
-	Numero     string
-}
-
-const (
-	MsgTypeBatch = 'B'
-	MsgTypeEnd   = 'E'
-	MsgTypeQuery = 'Q'
 )
 
 func sendMessage(conn net.Conn, msgType byte, body string) error {
-	msg := []byte(fmt.Sprintf("%c%04d%s", msgType, len(body), body))
+	bodyBytes := []byte(body)
+	lenBytes := make([]byte, 4)
+	binary.BigEndian.PutUint32(lenBytes, uint32(len(bodyBytes)))
+
+	msg := append([]byte{msgType}, lenBytes...)
+	msg = append(msg, bodyBytes...)
 
 	n_sent := 0
 	for n_sent < len(msg) {
@@ -34,19 +22,6 @@ func sendMessage(conn net.Conn, msgType byte, body string) error {
 		n_sent += n
 	}
 	return nil
-}
-
-func sendBatch(conn net.Conn, batch []Bet) error {
-	msg := ""
-	for _, bet := range batch {
-		msg += fmt.Sprintf("%s,%s,%s,%s,%s,%s\n",
-			bet.Agency, bet.Nombre, bet.Apellido, bet.Documento, bet.Nacimiento, bet.Numero)
-	}
-	return sendMessage(conn, MsgTypeBatch, msg)
-}
-
-func sendEnd(conn net.Conn, agencyID string) error {
-	return sendMessage(conn, MsgTypeEnd, agencyID)
 }
 
 func receiveMessage(conn net.Conn) (byte, string, error) {
@@ -61,7 +36,7 @@ func receiveMessage(conn net.Conn) (byte, string, error) {
 	}
 
 	msgType := header[0]
-	msgLen, _ := strconv.Atoi(string(header[1:5]))
+	msgLen := int(binary.BigEndian.Uint32(header[1:5]))
 	msg := make([]byte, msgLen)
 	msg_recv := 0
 	for msg_recv < msgLen {
@@ -72,24 +47,4 @@ func receiveMessage(conn net.Conn) (byte, string, error) {
 		msg_recv += n
 	}
 	return msgType, string(msg), nil
-}
-
-func queryWinners(conn net.Conn, agencyID string) ([]string, error) {
-	if err := sendMessage(conn, MsgTypeQuery, agencyID); err != nil {
-		return nil, err
-	}
-	_, msg, err := receiveMessage(conn)
-	if err != nil {
-		return nil, err
-	}
-	if msg == "" {
-		return []string{}, nil
-	}
-	winners := strings.Split(strings.TrimSpace(msg), ",")
-	return winners, nil
-}
-
-func receiveConfirmation(conn net.Conn) error {
-	_, _, err := receiveMessage(conn)
-	return err
 }
