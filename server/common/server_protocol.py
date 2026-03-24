@@ -1,5 +1,7 @@
 import struct
 
+HEADER_SIZE = 5
+
 def send_message(sock, msg_type, body):
     body_bytes = body.encode()
     msg = msg_type.encode() + struct.pack('>I', len(body_bytes)) + body_bytes
@@ -10,8 +12,8 @@ def send_message(sock, msg_type, body):
 
 def receive_message(sock):
     header = b''
-    while len(header) < 5:
-        n_recv = sock.recv(5-len(header))
+    while len(header) < HEADER_SIZE:
+        n_recv = sock.recv(HEADER_SIZE - len(header))
         if not n_recv:
             raise OSError("Connection closed")
         header += n_recv
