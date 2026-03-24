@@ -96,7 +96,7 @@ func (c *Client) StartClientLoop(signalChannel chan os.Signal) {
 			return
 		}
 
-		confirmation, err := ReceiveConfirmation(c.conn)
+		confirmation, err := ReceiveMessage(c.conn)
 		if err != nil || confirmation == '0' {
 			log.Errorf("action: batch_enviado | result: fail | client_id: %v", c.config.ID)
 			c.conn.Close()
