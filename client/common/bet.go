@@ -1,6 +1,10 @@
 package common
 
-import "fmt"
+import (
+	"encoding/csv"
+	"fmt"
+	"io"
+)
 
 type Bet struct {
 	Agency     string
@@ -22,4 +26,25 @@ func serializeBatch(bets []Bet) string {
 		msg += serializeBet(bet) + "\n"
 	}
 	return msg
+}
+
+func readBatch(reader *csv.Reader, agency string, maxAmount int) ([]Bet, error) {
+	batch := []Bet{}
+	for i := 0; i < maxAmount; i++ {
+		line, err := reader.Read()
+		if err == io.EOF {
+			break
+		} else if err != nil {
+			return batch, err
+		}
+		batch = append(batch, Bet{
+			Agency:     agency,
+			Nombre:     line[0],
+			Apellido:   line[1],
+			Documento:  line[2],
+			Nacimiento: line[3],
+			Numero:     line[4],
+		})
+	}
+	return batch, nil
 }

@@ -75,20 +75,10 @@ func (c *Client) StartClientLoop(signalChannel chan os.Signal) {
 			// Continue with the normal execution
 		}
 
-		batch := []Bet{}
-		for i := 0; i < c.config.BatchMaxAmount; i++ {
-			line, err := reader.Read()
-			if err != nil {
-				break
-			}
-			batch = append(batch, Bet{
-				Agency:     c.config.ID,
-				Nombre:     line[0],
-				Apellido:   line[1],
-				Documento:  line[2],
-				Nacimiento: line[3],
-				Numero:     line[4],
-			})
+		batch, err := readBatch(reader, c.config.ID, c.config.BatchMaxAmount)
+		if err != nil {
+			log.Errorf("action: read_file | result: fail | error: %v", err)
+			return
 		}
 
 		if len(batch) == 0 {
