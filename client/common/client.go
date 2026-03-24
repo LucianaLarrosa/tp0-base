@@ -15,6 +15,7 @@ const (
 	MsgTypeBatch = 'B'
 	MsgTypeEnd   = 'E'
 	MsgTypeQuery = 'Q'
+	MsgError     = '0'
 )
 
 var log = logging.MustGetLogger("log")
@@ -61,11 +62,11 @@ func (c *Client) createClientSocket() error {
 	return fmt.Errorf("Could not connect after %d retries", maxRetries)
 }
 
-func (c *Client) queryWinners(conn net.Conn) ([]string, error) {
-	if err := sendMessage(conn, MsgTypeQuery, c.config.ID); err != nil {
+func (c *Client) queryWinners() ([]string, error) {
+	if err := sendMessage(c.conn, MsgTypeQuery, c.config.ID); err != nil {
 		return nil, err
 	}
-	_, msg, err := receiveMessage(conn)
+	_, msg, err := receiveMessage(c.conn)
 	if err != nil {
 		return nil, err
 	}
@@ -119,7 +120,7 @@ func (c *Client) StartClientLoop(signalChannel chan os.Signal) {
 		}
 
 		msgType, _, err := receiveMessage(c.conn)
-		if err != nil || msgType == '0' {
+		if err != nil || msgType == MsgError {
 			log.Errorf("action: batch_enviado | result: fail | client_id: %v", c.config.ID)
 			c.conn.Close()
 			return
@@ -152,7 +153,7 @@ func (c *Client) StartClientLoop(signalChannel chan os.Signal) {
 		return
 	}
 	defer c.conn.Close()
-	winners, err := c.queryWinners(c.conn)
+	winners, err := c.queryWinners()
 	if err != nil {
 		log.Errorf("action: consulta_ganadores | result: fail | client_id: %v", c.config.ID)
 		return

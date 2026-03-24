@@ -20,6 +20,7 @@ class Server:
         self._total_agencies = agencies
         self._agencies_done = 0
         self._waiting_agencies = {} #agencyID: socket
+        self._winners = {} #agencyID: [winners]
 
     def run(self):
         """
@@ -56,37 +57,49 @@ class Server:
             return
         
         if msg_type == MSG_TYPE_BATCH:
-            bets, has_error = deserialize_batch(msg)
-            store_bets(bets)
-            if not has_error:
-                logging.info(f'action: apuesta_recibida | result: success | cantidad: {len(bets)}')
-                send_message(client_sock, MSG_SUCCESS, "")
-            else:
-                logging.info(f'action: apuesta_recibida | result: fail | cantidad: {len(bets)}')
-                send_message(client_sock, MSG_ERROR, "")
-            client_sock.close()
+            self.__handle_batch(client_sock, msg)
         elif msg_type == MSG_TYPE_END:
-            self._agencies_done += 1
-            if self._agencies_done == self._total_agencies:
-                logging.info('action: sorteo | result: success')
-                all_bets = list(load_bets())
-                for agency, sock in self._waiting_agencies.items():
-                    winners = self.__get_winners(agency, all_bets)
-                    logging.info(f'action: send_winners | result: success | agency: {agency} | cant: {len(winners)}')
-                    send_message(sock, MSG_WINNERS, ','.join(winners))
-                    sock.close()
-                self._waiting_agencies.clear()
-            client_sock.close()
+            self.__handle_end(client_sock)
         elif msg_type == MSG_TYPE_QUERY:
-            agency_id = msg
-            if self._agencies_done == self._total_agencies:
-                all_bets = list(load_bets())
-                winners = self.__get_winners(agency_id, all_bets)
-                logging.info(f'action: send_winners | result: success | agency: {agency_id} | cant: {len(winners)}')
-                send_message(client_sock, MSG_WINNERS, ','.join(winners))
-                client_sock.close()
-            else:
-                self._waiting_agencies[agency_id] = client_sock
+            self.__handle_query(client_sock, msg)
+
+    def __handle_batch(self, sock, msg):
+        bets, has_error = deserialize_batch(msg)
+        store_bets(bets)
+        if not has_error:
+            logging.info(f'action: apuesta_recibida | result: success | cantidad: {len(bets)}')
+            send_message(sock, MSG_SUCCESS, "")
+        else:
+            logging.info(f'action: apuesta_recibida | result: fail | cantidad: {len(bets)}')
+            send_message(sock, MSG_ERROR, "")
+        sock.close()
+
+    def __handle_end(self, end_sock):
+        self._agencies_done += 1
+        if self._agencies_done == self._total_agencies:
+            self.__do_sorteo()
+            for agency, sock in self._waiting_agencies.items():
+                self.__notify_agency(sock, agency)
+            self._waiting_agencies.clear()
+        end_sock.close()
+
+    def __handle_query(self, sock, agency_id):
+        if self._agencies_done == self._total_agencies:
+            self.__notify_agency(sock, agency_id)
+        else:
+            self._waiting_agencies[agency_id] = sock
+    
+    def __do_sorteo(self):
+        logging.info('action: sorteo | result: success')
+        all_bets = list(load_bets())
+        for i in range(1, self._total_agencies + 1):
+            self._winners[str(i)] = self.__get_winners(str(i), all_bets)
+
+    def __notify_agency(self, sock, agency):
+        winners = self._winners[agency]
+        logging.info(f'action: send_winners | result: success | agency: {agency} | cant: {len(winners)}')
+        send_message(sock, MSG_WINNERS, ','.join(winners))
+        sock.close()
 
     def __get_winners(self, agency_id, all_bets):
         winners = []
