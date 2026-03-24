@@ -5,6 +5,10 @@ import (
 	"net"
 )
 
+const (
+	HeaderSize = 5
+)
+
 func sendMessage(conn net.Conn, msgType byte, body string) error {
 	bodyBytes := []byte(body)
 	lenBytes := make([]byte, 4)
@@ -25,9 +29,9 @@ func sendMessage(conn net.Conn, msgType byte, body string) error {
 }
 
 func receiveMessage(conn net.Conn) (byte, string, error) {
-	header := make([]byte, 5)
+	header := make([]byte, HeaderSize)
 	header_recv := 0
-	for header_recv < 5 {
+	for header_recv < HeaderSize {
 		n, err := conn.Read(header[header_recv:])
 		if err != nil {
 			return 0, "", err
