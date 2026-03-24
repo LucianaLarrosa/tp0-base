@@ -92,21 +92,19 @@ class Server:
     def __do_sorteo(self):
         logging.info('action: sorteo | result: success')
         all_bets = list(load_bets())
-        for i in range(1, self._total_agencies + 1):
-            self._winners[str(i)] = self.__get_winners(str(i), all_bets)
+        self.__get_winners(all_bets)
 
     def __notify_agency(self, sock, agency):
-        winners = self._winners[agency]
+        winners = self._winners.get(agency, [])
         logging.info(f'action: send_winners | result: success | agency: {agency} | cant: {len(winners)}')
         send_message(sock, MSG_WINNERS, ','.join(winners))
         sock.close()
 
-    def __get_winners(self, agency_id, all_bets):
-        winners = []
+    def __get_winners(self, all_bets):
         for bet in all_bets:
-            if has_won(bet) and int(bet.agency) == int(agency_id):
-                winners.append(str(bet.document))
-        return winners
+            if has_won(bet):
+                agency = str(bet.agency)
+                self._winners[agency] = self._winners.get(agency, []) + [str(bet.document)]
 
     def __accept_new_connection(self):
         """
