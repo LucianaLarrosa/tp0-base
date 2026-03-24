@@ -101,19 +101,19 @@ func (c *Client) StartClientLoop(signalChannel chan os.Signal) {
 
 		// Send the batch to the server
 		if err := SendMessage(serializeBatch(batch), c.conn); err != nil {
-			log.Errorf("action: apuesta_enviada | result: fail | client_id: %v", c.config.ID)
+			log.Errorf("action: batch_enviado | result: fail | client_id: %v", c.config.ID)
 			c.conn.Close()
 			return
 		}
 
-		confirmation, _ := ReceiveConfirmation(c.conn)
-		if confirmation == '0' {
-			log.Errorf("action: apuesta_enviada | result: fail | client_id: %v", c.config.ID)
+		confirmation, err := ReceiveConfirmation(c.conn)
+		if err != nil || confirmation == '0' {
+			log.Errorf("action: batch_enviado | result: fail | client_id: %v", c.config.ID)
 			c.conn.Close()
 			return
 		}
 
-		log.Infof("action: apuesta_enviada | result: success | client_id: %v", c.config.ID)
+		log.Infof("action: batch_enviado | result: success | client_id: %v", c.config.ID)
 		c.conn.Close()
 
 		select {

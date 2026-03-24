@@ -1,7 +1,7 @@
 import socket
 import logging
 import signal
-from common.server_protocol import send_confirmation, receive_message, send_error
+from common.server_protocol import send_success, receive_message, send_error
 from common.utils import store_bets, deserialize_batch
 
 
@@ -39,21 +39,22 @@ class Server:
         If a problem arises in the communication with the client, the
         client socket will also be closed
         """
-        bets = []
         try:
             msg = receive_message(client_sock)
-            bets, has_error = deserialize_batch(msg)
-            store_bets(bets)
-            if not has_error:
-                logging.info(f'action: apuesta_recibida | result: success | cantidad: {len(bets)}')
-                send_confirmation(client_sock)
-            else:
-                logging.error(f'action: apuesta_recibida | result: fail | cantidad: {len(bets)}')
-                send_error(client_sock)
         except OSError as e:
             logging.error(f'action: receive_message | result: fail | error: {e}')
-        finally:
             client_sock.close()
+            return
+        
+        bets, has_error = deserialize_batch(msg)
+        store_bets(bets)
+        if not has_error:
+            logging.info(f'action: apuesta_recibida | result: success | cantidad: {len(bets)}')
+            send_success(client_sock)
+        else:
+            logging.error(f'action: apuesta_recibida | result: fail | cantidad: {len(bets)}')
+            send_error(client_sock)
+        client_sock.close()
 
     def __accept_new_connection(self):
         """
