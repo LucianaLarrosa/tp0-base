@@ -74,17 +74,14 @@ func (c *Client) StartClientLoop(signalChannel chan os.Signal) {
 		msg := serializeBet(c.config.Bet)
 		err := SendMessage(msg, c.conn)
 		if err != nil {
-			log.Errorf("action: apuesta_enviada | result: fail | dni: %s | numero: %s",
-				c.config.Bet.Documento,
-				c.config.Bet.Numero,
-			)
+			log.Error("action: send_message | result: fail")
 			c.conn.Close()
 			return
 		}
 
 		confirmation, err := ReceiveConfirmation(c.conn)
 		c.conn.Close()
-		if confirmation == '0' {
+		if err != nil || confirmation == '0' {
 			log.Errorf("action: apuesta_enviada | result: fail | dni: %s | numero: %s",
 				c.config.Bet.Documento,
 				c.config.Bet.Numero,

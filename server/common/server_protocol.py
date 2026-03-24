@@ -1,11 +1,11 @@
 import struct
 
-CONFIRMATION_MSG = b'1'
+SUCCESS_MSG = b'1'
 ERROR_MSG = b'0'
 LENGTH_SIZE = 4
 
-def send_confirmation(sock):
-    sock.send(CONFIRMATION_MSG)
+def send_success(sock):
+    sock.send(SUCCESS_MSG)
 
 def send_error(sock):
     sock.send(ERROR_MSG)
