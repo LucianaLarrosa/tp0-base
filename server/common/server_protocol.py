@@ -1,14 +1,9 @@
 import struct
 
-SUCCESS_MSG = b'1'
-ERROR_MSG = b'0'
 LENGTH_SIZE = 4
 
-def send_success(sock):
-    sock.send(SUCCESS_MSG)
-
-def send_error(sock):
-    sock.send(ERROR_MSG)
+def send_message(sock, msg):
+    sock.send(msg)
 
 def receive_message(sock):
     len_recv_byte = b''

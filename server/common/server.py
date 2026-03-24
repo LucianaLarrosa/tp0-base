@@ -1,9 +1,11 @@
 import socket
 import logging
 import signal
-from common.server_protocol import send_success, receive_message, send_error
+from common.server_protocol import receive_message, send_message
 from common.utils import store_bets, deserialize_bet
 
+SUCCESS_MSG = b'1'
+ERROR_MSG = b'0'
 
 class Server:
     def __init__(self, port, listen_backlog):
@@ -49,13 +51,13 @@ class Server:
         bet = deserialize_bet(recv_string)
         if bet is None:
             logging.info(f'action: apuesta_almacenada | result: fail')
-            send_error(client_sock)
+            send_message(client_sock, ERROR_MSG)
             client_sock.close()
             return
         
         store_bets([bet])
         logging.info(f'action: apuesta_almacenada | result: success | dni: {bet.document} | numero: {bet.number}')
-        send_success(client_sock)
+        send_message(client_sock, SUCCESS_MSG)
         client_sock.close()
 
     def __accept_new_connection(self):

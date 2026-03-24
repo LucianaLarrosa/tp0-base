@@ -27,7 +27,7 @@ func SendMessage(msg string, conn net.Conn) error {
 	return nil
 }
 
-func ReceiveConfirmation(conn net.Conn) (byte, error) {
+func ReceiveMessage(conn net.Conn) (byte, error) {
 	recv_byte := make([]byte, LengthConfirmation)
 	_, err := conn.Read(recv_byte)
 	return recv_byte[0], err
