@@ -20,7 +20,6 @@ class Server:
         self._server_socket.listen(listen_backlog)
         self._total_agencies = agencies
         self._agencies_done = 0
-        #self._waiting_agencies = {} #agencyID: socket
         self._winners = {} #agencyID: [winners]
         self._sorteo_event = threading.Event()
         self._lock = threading.Lock()

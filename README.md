@@ -254,3 +254,13 @@ Los tipos de mensaje son:
 4. El cliente envía un mensaje de tipo `Q` con su ID para consultar sus ganadores.
 5. Si el sorteo ya se realizó, el servidor responde con tipo `W` y los DNIs ganadores separados por coma. Si no, guarda el socket y responde cuando el sorteo esté listo. En este caso, el socket queda abierto hasta que el servidor complete el sorteo, momento en el que responde automaticamente sin necesidad de que el cliente reenvíe la consulta.
 6. El cliente loguea: `action: consulta_ganadores | result: success | cant_ganadores: ${cantidad}`. 
+
+### Ejercicio 8
+En este ejercicio se modificó el servidor para aceptar y procesar conexiones en paralelo utilizando `threading`.
+
+Cada conexión entrante se maneja en un thread separado, permitiendo que múltiples clientes sean atendidos simultáneamente. 
+
+**Mecanismos de sincronización:**
+* `threading.Lock`: protege las secciones críticas: `store_bets` (varios clientes pueden querer guardar sus apuestas al mismo tiempo) y el contador `_agencies_done` (para que no haya inconsistencias si 2 clientes intentan incrementarla al mismo tiempo). De esta forma evitamos que múltiples threads escriban simultáneamente o lean un estado inconsistente del contador. 
+* `threading.Event`: sincroniza el flujo del sorteo. Los threads que reciben una consulta de ganadores (`Q`), antes de que se haya realizado el sorteo, se bloquean en `event.wait()` hasta que el sorteo se complete. Cuando el último `END` llega y el sorteo finaliza, el thread llama `event.set()` desbloqueando a todos los threads de `QUERY` simultáneamente. A su vez, si una consulta llega después de que el sorteo ya se realizó (ya se hizo el `set()`), el `wait()` no bloquea ya que el evento mantiene su estado activo permanentemente. 
+Por otro lado, la lectura concurrente de `_winners` (diccionario que almacena los resultados del sorteo) por múltiples threads no requiere protección adicional, ya que el diccionario se escribe una única vez antes de activar el evento y luego solo se lee. 
