@@ -264,7 +264,9 @@ Los tipos de mensaje son:
 ### Ejercicio 8
 En este ejercicio se modificó el servidor para aceptar y procesar conexiones en paralelo utilizando `threading`.
 
-Cada conexión entrante se maneja en un thread separado, permitiendo que múltiples clientes sean atendidos simultáneamente. 
+Se implementó un pool de threads fijo: al iniciar el servidor se crean N workers que esperan trabajo en una `queue.Queue`. Cada conexión entrante se encola y es atendida por el primer worker disponible, evitando crear un thread por cada mensaje recibido y acotando el paralelismo a un número fijo de threads concurrentes. 
+
+Para el shutdown graceful, al recibir SIGTERM se encola un `None` por cada worker como señal de terminación. Cada worker al recibir el `None` sale de su loop y el thread principal los joinea para esperar que terminen limpiamente. 
 
 **Mecanismos de sincronización:**
 * `threading.Lock`: protege las secciones críticas: `store_bets` (varios clientes pueden querer guardar sus apuestas al mismo tiempo) y el contador `_agencies_done` (para que no haya inconsistencias si 2 clientes intentan incrementarla al mismo tiempo). De esta forma evitamos que múltiples threads escriban simultáneamente o lean un estado inconsistente del contador. 
