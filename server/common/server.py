@@ -2,6 +2,7 @@ import socket
 import logging
 import signal
 import threading
+import queue
 from common.server_protocol import receive_message, send_message
 from common.utils import store_bets, load_bets, has_won, deserialize_batch
 
@@ -23,6 +24,15 @@ class Server:
         self._winners = {} #agencyID: [winners]
         self._sorteo_event = threading.Event()
         self._lock = threading.Lock()
+        self._queue = queue.Queue()
+        self._workers = []
+
+    def _worker(self):
+        while True:
+            sock = self._queue.get()
+            if sock is None:
+                break
+            self.__handle_client_connection(sock)
 
     def run(self):
         """
@@ -37,11 +47,15 @@ class Server:
         # Handle signal to graceful shutdown
         signal.signal(signal.SIGTERM, self.__handle_sigterm)
 
+        for _ in range(self._total_agencies):
+            t = threading.Thread(target=self._worker)
+            t.start()
+            self._workers.append(t)
+
         try:
             while True:
                 client_sock = self.__accept_new_connection()
-                thread = threading.Thread(target=self.__handle_client_connection, args=(client_sock,))
-                thread.start()
+                self._queue.put(client_sock)
         except OSError as e:
             logging.info('action: server_run | result: fail | error: {e}')
 
@@ -129,4 +143,8 @@ class Server:
     def __handle_sigterm(self, signum, frame):
         logging.info('action: shutdown_server | result: in_progress')
         self._server_socket.close()
+        for _ in self._workers:
+            self._queue.put(None)
+        for t in self._workers:
+            t.join()
         logging.info('action: shutdown_server | result: success')
