@@ -5,9 +5,17 @@ import (
 	"fmt"
 	"net"
 	"os"
+	"strings"
 	"time"
 
 	"github.com/op/go-logging"
+)
+
+const (
+	MsgTypeBatch = 'B'
+	MsgTypeEnd   = 'E'
+	MsgTypeQuery = 'Q'
+	MsgError     = '0'
 )
 
 var log = logging.MustGetLogger("log")
@@ -40,17 +48,33 @@ func NewClient(config ClientConfig) *Client {
 // failure, error is printed in stdout/stderr and exit 1
 // is returned
 func (c *Client) createClientSocket() error {
-	conn, err := net.Dial("tcp", c.config.ServerAddress)
-	if err != nil {
-		log.Criticalf(
-			"action: connect | result: fail | client_id: %v | error: %v",
-			c.config.ID,
-			err,
-		)
-		return err
+	maxRetries := 5
+	for i := 0; i < maxRetries; i++ {
+		conn, err := net.Dial("tcp", c.config.ServerAddress)
+		if err == nil {
+			c.conn = conn
+			return nil
+		}
+		log.Infof("action: connect | result: in_progress | client_id: %v | attempt: %v", c.config.ID, i+1)
+		time.Sleep(500 * time.Millisecond)
 	}
-	c.conn = conn
-	return nil
+	log.Criticalf("action: connect | result: fail | client_id: %v", c.config.ID)
+	return fmt.Errorf("Could not connect after %d retries", maxRetries)
+}
+
+func (c *Client) queryWinners() ([]string, error) {
+	if err := sendMessage(c.conn, MsgTypeQuery, c.config.ID); err != nil {
+		return nil, err
+	}
+	_, msg, err := receiveMessage(c.conn)
+	if err != nil {
+		return nil, err
+	}
+	if msg == "" {
+		return []string{}, nil
+	}
+	winners := strings.Split(strings.TrimSpace(msg), ",")
+	return winners, nil
 }
 
 // StartClientLoop Send messages to the client until some time threshold is met
@@ -74,20 +98,10 @@ func (c *Client) StartClientLoop(signalChannel chan os.Signal) {
 			// Continue with the normal execution
 		}
 
-		batch := []Bet{}
-		for i := 0; i < c.config.BatchMaxAmount; i++ {
-			line, err := reader.Read()
-			if err != nil {
-				break
-			}
-			batch = append(batch, Bet{
-				Agency:     c.config.ID,
-				Nombre:     line[0],
-				Apellido:   line[1],
-				Documento:  line[2],
-				Nacimiento: line[3],
-				Numero:     line[4],
-			})
+		batch, err := readBatch(reader, c.config.ID, c.config.BatchMaxAmount)
+		if err != nil {
+			log.Errorf("action: read_file | result: fail | error: %v", err)
+			return
 		}
 
 		if len(batch) == 0 {
@@ -99,22 +113,28 @@ func (c *Client) StartClientLoop(signalChannel chan os.Signal) {
 		}
 
 		// Send the batch to the server
-		if err := sendBatch(c.conn, batch); err != nil {
-			log.Errorf("action: apuesta_enviada | result: fail | client_id: %v", c.config.ID)
+		if err := sendMessage(c.conn, MsgTypeBatch, serializeBatch(batch)); err != nil {
+			log.Errorf("action: batch_enviado | result: fail | client_id: %v", c.config.ID)
 			c.conn.Close()
 			return
 		}
 
-		if err := receiveConfirmation(c.conn); err != nil {
-			log.Errorf("action: apuesta_enviada | result: fail | client_id: %v", c.config.ID)
+		msgType, _, err := receiveMessage(c.conn)
+		if err != nil || msgType == MsgError {
+			log.Errorf("action: batch_enviado | result: fail | client_id: %v", c.config.ID)
 			c.conn.Close()
 			return
 		}
 
-		log.Infof("action: apuesta_enviada | result: success | client_id: %v", c.config.ID)
+		log.Infof("action: batch_enviado | result: success | client_id: %v", c.config.ID)
 		c.conn.Close()
 
-		time.Sleep(c.config.LoopPeriod)
+		select {
+		case <-signalChannel:
+			log.Infof("action: shutdown | result: success | client_id: %v", c.config.ID)
+			return
+		case <-time.After(c.config.LoopPeriod):
+		}
 
 	}
 	log.Infof("action: loop_finished | result: success | client_id: %v", c.config.ID)
@@ -122,7 +142,7 @@ func (c *Client) StartClientLoop(signalChannel chan os.Signal) {
 	if err := c.createClientSocket(); err != nil {
 		return
 	}
-	if err := sendEnd(c.conn, c.config.ID); err != nil {
+	if err := sendMessage(c.conn, MsgTypeEnd, c.config.ID); err != nil {
 		log.Errorf("action: send_end | result: fail | client_id: %v", c.config.ID)
 		c.conn.Close()
 		return
@@ -133,7 +153,7 @@ func (c *Client) StartClientLoop(signalChannel chan os.Signal) {
 		return
 	}
 	defer c.conn.Close()
-	winners, err := queryWinners(c.conn, c.config.ID)
+	winners, err := c.queryWinners()
 	if err != nil {
 		log.Errorf("action: consulta_ganadores | result: fail | client_id: %v", c.config.ID)
 		return

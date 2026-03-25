@@ -2,12 +2,16 @@ import socket
 import logging
 import signal
 import threading
-from common.server_protocol import send_confirmation, send_error, send_winners, receive_message
-from common.utils import store_bets, Bet, load_bets, has_won
+from common.server_protocol import receive_message, send_message
+from common.utils import store_bets, load_bets, has_won, deserialize_batch
 
 MSG_TYPE_BATCH = 'B'
 MSG_TYPE_END   = 'E'
 MSG_TYPE_QUERY = 'Q'
+
+MSG_SUCCESS = '1'
+MSG_ERROR = '0'
+MSG_WINNERS = 'W'
 class Server:
     def __init__(self, port, listen_backlog, agencies):
         # Initialize server socket
@@ -16,7 +20,9 @@ class Server:
         self._server_socket.listen(listen_backlog)
         self._total_agencies = agencies
         self._agencies_done = 0
-        self._waiting_agencies = {} #agencyID: socket
+        #self._waiting_agencies = {} #agencyID: socket
+        self._winners = {} #agencyID: [winners]
+        self._sorteo_event = threading.Event()
         self._lock = threading.Lock()
 
     def run(self):
@@ -25,11 +31,11 @@ class Server:
 
         Server that accept a new connections and establishes a
         communication with a client. After client with communucation
+
         finishes, servers starts to accept new connections again
         """
 
-        # TODO: Modify this program to handle signal to graceful shutdown
-        # the server DONE!!
+        # Handle signal to graceful shutdown
         signal.signal(signal.SIGTERM, self.__handle_sigterm)
 
         try:
@@ -47,54 +53,61 @@ class Server:
         If a problem arises in the communication with the client, the
         client socket will also be closed
         """
-        bets = []
         try:
             msg_type, msg = receive_message(client_sock)
-            if msg_type == MSG_TYPE_BATCH:
-                lines = msg.strip().split('\n')
-                for line in lines:
-                    fields = line.split(',')
-                    bet = Bet(fields[0], fields[1], fields[2], fields[3], fields[4], fields[5])
-                    bets.append(bet)
-                with self._lock:
-                    store_bets(bets)
-                logging.info(f'action: apuesta_recibida | result: success | cantidad: {len(bets)}')
-                send_confirmation(client_sock)
-            elif msg_type == MSG_TYPE_END:
-                with self._lock:
-                    self._agencies_done += 1
-                    if self._agencies_done == self._total_agencies:
-                        logging.info('action: sorteo | result: success')
-                        all_bets = list(load_bets())
-                        for agency, sock in self._waiting_agencies.items():
-                            winners = self.__get_winners(agency, all_bets)
-                            logging.info(f'action: send_winners | result: success | agency: {agency} | cant: {len(winners)}')
-                            send_winners(sock, winners)
-                            sock.close()
-                        self._waiting_agencies.clear()
-            elif msg_type == MSG_TYPE_QUERY:
-                agency_id = msg
-                with self._lock:
-                    if self._agencies_done == self._total_agencies:
-                        all_bets = list(load_bets())
-                        winners = self.__get_winners(agency_id, all_bets)
-                        logging.info(f'action: send_winners | result: success | agency: {agency_id} | cant: {len(winners)}')
-                        send_winners(client_sock, winners)
-                    else:
-                        self._waiting_agencies[agency_id] = client_sock
-        except Exception as e:
-            logging.error(f'action: apuesta_recibida | result: fail | cantidad: {len(bets)}')
-            send_error(client_sock)
-        finally:
-            if client_sock not in self._waiting_agencies.values():
-                client_sock.close()
+        except OSError as e:
+            logging.error(f'action: receive_message | result: fail | error: {e}')
+            client_sock.close()
+            return
+        
+        if msg_type == MSG_TYPE_BATCH:
+            self.__handle_batch(client_sock, msg)
+        elif msg_type == MSG_TYPE_END:
+            self.__handle_end(client_sock)
+        elif msg_type == MSG_TYPE_QUERY:
+            self.__handle_query(client_sock, msg)
 
-    def __get_winners(self, agency_id, all_bets):
-        winners = []
+    def __handle_batch(self, sock, msg):
+        bets, has_error = deserialize_batch(msg)
+        with self._lock:
+            store_bets(bets)
+        if not has_error:
+            logging.info(f'action: apuesta_recibida | result: success | cantidad: {len(bets)}')
+            send_message(sock, MSG_SUCCESS, "")
+        else:
+            logging.info(f'action: apuesta_recibida | result: fail | cantidad: {len(bets)}')
+            send_message(sock, MSG_ERROR, "")
+        sock.close()
+
+    def __handle_end(self, end_sock):
+        with self._lock:
+            self._agencies_done += 1
+            is_last = self._agencies_done == self._total_agencies
+        if is_last:
+            self.__do_sorteo()
+            self._sorteo_event.set()
+        end_sock.close()
+
+    def __handle_query(self, sock, agency_id):
+        self._sorteo_event.wait()
+        self.__notify_agency(sock, agency_id)
+    
+    def __do_sorteo(self):
+        logging.info('action: sorteo | result: success')
+        all_bets = list(load_bets())
+        self.__get_winners(all_bets)
+
+    def __notify_agency(self, sock, agency):
+        winners = self._winners.get(agency, [])
+        logging.info(f'action: send_winners | result: success | agency: {agency} | cant: {len(winners)}')
+        send_message(sock, MSG_WINNERS, ','.join(winners))
+        sock.close()
+
+    def __get_winners(self, all_bets):
         for bet in all_bets:
-            if has_won(bet) and int(bet.agency) == int(agency_id):
-                winners.append(str(bet.document))
-        return winners
+            if has_won(bet):
+                agency = str(bet.agency)
+                self._winners[agency] = self._winners.get(agency, []) + [str(bet.document)]
 
     def __accept_new_connection(self):
         """

@@ -49,3 +49,21 @@ def load_bets() -> list[Bet]:
         for row in reader:
             yield Bet(row[0], row[1], row[2], row[3], row[4], row[5])
 
+def deserialize_bet(msg):
+    try:
+        fields = msg.split(',')
+        return Bet(fields[0], fields[1], fields[2], fields[3], fields[4], fields[5])
+    except (ValueError, IndexError, AttributeError):
+        return None
+
+def deserialize_batch(msg):
+    msg_bets = msg.strip().split('\n')
+    bets = []
+    has_error = False
+    for line in msg_bets:
+        bet = deserialize_bet(line)
+        if bet is None:
+            has_error = True
+        else:
+            bets.append(bet)
+    return bets, has_error
