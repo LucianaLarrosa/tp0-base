@@ -44,9 +44,8 @@ func NewClient(config ClientConfig) *Client {
 	return client
 }
 
-// CreateClientSocket Initializes client socket. In case of
-// failure, error is printed in stdout/stderr and exit 1
-// is returned
+// createClientSocket connects to the server with up to 5 retries.
+// On success, stores the connection in c.conn.
 func (c *Client) createClientSocket() error {
 	maxRetries := 5
 	for i := 0; i < maxRetries; i++ {
@@ -62,6 +61,8 @@ func (c *Client) createClientSocket() error {
 	return fmt.Errorf("Could not connect after %d retries", maxRetries)
 }
 
+// queryWinners sends a QUERY message and returns the list of winner DNIs
+// for this agency.
 func (c *Client) queryWinners() ([]string, error) {
 	if err := sendMessage(c.conn, MsgTypeQuery, c.config.ID); err != nil {
 		return nil, err
@@ -77,7 +78,9 @@ func (c *Client) queryWinners() ([]string, error) {
 	return winners, nil
 }
 
-// StartClientLoop Send messages to the client until some time threshold is met
+// StartClientLoop sends all batches and the END message over a single connection,
+// then opens a second connection to query the lottery winners.
+// Stops early on SIGTERM or communication error.
 func (c *Client) StartClientLoop(signalChannel chan os.Signal) {
 	filepath := fmt.Sprintf("/data/agency-%s.csv", c.config.ID)
 	file, err := os.Open(filepath)

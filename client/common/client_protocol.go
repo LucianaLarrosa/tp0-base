@@ -9,6 +9,8 @@ const (
 	HeaderSize = 5
 )
 
+// Protocol format: [1 byte type][4 bytes length (big-endian)][N bytes body]
+// sendMessage sends a typed message over conn, handling short-writes.
 func sendMessage(conn net.Conn, msgType byte, body string) error {
 	bodyBytes := []byte(body)
 	lenBytes := make([]byte, 4)
@@ -28,6 +30,8 @@ func sendMessage(conn net.Conn, msgType byte, body string) error {
 	return nil
 }
 
+// receiveMessage reads a typed message from conn, handling short-reads.
+// Returns the message type, body, and any error.
 func receiveMessage(conn net.Conn) (byte, string, error) {
 	header := make([]byte, HeaderSize)
 	header_recv := 0
