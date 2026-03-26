@@ -16,12 +16,9 @@ class Server:
 
     def run(self):
         """
-        Dummy Server loop
-
-        Server that accept a new connections and establishes a
-        communication with a client. After client with communucation
-
-        finishes, servers starts to accept new connections again
+        Accepts client connections and handles each one.
+        Registers SIGTERM handler for graceful shutdown.
+        Exits when the server socket is closed (OSError).
         """
 
         # Handle signal to graceful shutdown
@@ -36,11 +33,10 @@ class Server:
 
     def __handle_client_connection(self, client_sock):
         """
-        Read message from a specific client socket and closes the socket
-
-        If a problem arises in the communication with the client, the
-        client socket will also be closed
+        Reads a bet from client_sock, stores it and responds with success or error.
+        Closes the socket in all cases upon completion.
         """
+
         try:
             recv_string = receive_message(client_sock)
         except OSError as e:
@@ -79,6 +75,11 @@ class Server:
         return c
 
     def __handle_sigterm(self, signum, frame):
+        """
+        Closes the server socket on SIGTERM, causing accept() to raise OSError
+        and allowing the main loop to exit cleanly.
+        """
+
         logging.info('action: shutdown_server | result: in_progress')
         self._server_socket.close()
         logging.info('action: shutdown_server | result: success')

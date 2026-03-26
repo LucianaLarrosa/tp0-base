@@ -35,9 +35,8 @@ func NewClient(config ClientConfig) *Client {
 	return client
 }
 
-// CreateClientSocket Initializes client socket. In case of
-// failure, error is printed in stdout/stderr and exit 1
-// is returned
+// createClientSocket connects to the server with up to 5 retries.
+// On success, stores the connection in c.conn.
 func (c *Client) createClientSocket() error {
 	maxRetries := 5
 	for i := 0; i < maxRetries; i++ {
@@ -53,12 +52,11 @@ func (c *Client) createClientSocket() error {
 	return fmt.Errorf("Could not connect after %d retries", maxRetries)
 }
 
-// StartClientLoop Send messages to the client until some time threshold is met
+// StartClientLoop sends the configured bet to the server repeatedly,
+// once per loop iteration with a delay between each.
+// Stops early on SIGTERM or communication error.
 func (c *Client) StartClientLoop(signalChannel chan os.Signal) {
-	// There is an autoincremental msgID to identify every message sent
-	// Messages if the message amount threshold has not been surpassed
 	for i := 0; i < c.config.LoopAmount; i++ {
-		// Create the connection the server in every loop iteration. Send an
 		select {
 		case <-signalChannel:
 			log.Infof("action: shutdown | result: success | client_id: %v", c.config.ID)
