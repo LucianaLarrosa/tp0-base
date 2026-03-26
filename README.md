@@ -224,7 +224,7 @@ Para garantizar que todos los bytes se transmitan correctamente, tanto el envío
 Se separó la lógica del protocolo en 2 archivos: `client_protocol.go` y `server_protocol.py`. 
 
 ### Ejercicio 6
-En este ejercicio se modificó el cliente para enviar apuestas en batches. El cliente lee el archivo CSV de su agencia y arma batches de apuestas que envía al servidor en una sola conexión.
+En este ejercicio se modificó el cliente para enviar apuestas en batches. El cliente lee el archivo CSV de su agencia, arma batches y los envía todos sobre una única conexión TCP: abre la conexión al inicio, envía cada batch y espera su confirmación, y finalmente cierra la conexión al enviar todos los datos. El servidor mantiene la conexión abierta procesando batches en un loop hasta detectar que el cliente la cerró.
 
 La cantidad máxima de apuestas por batch es configurable desde `config.yaml`. Se limita a 100 apuestas para garantizar que los paquetes no superen los 8kB (asumiendo un tamaño máximo de 80 bytes por apuesta: 100 x 80 = 8000 bytes < 8192 bytes). 
 
