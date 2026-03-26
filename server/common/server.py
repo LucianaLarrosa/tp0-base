@@ -50,18 +50,19 @@ class Server:
         client socket will also be closed
         """
         try:
-            msg_type, msg = receive_message(client_sock)
+            while True:
+                msg_type, msg = receive_message(client_sock)
+                if msg_type == MSG_TYPE_BATCH:
+                    self.__handle_batch(client_sock, msg)
+                elif msg_type == MSG_TYPE_END:
+                    self.__handle_end(client_sock)
+                    break
+                elif msg_type == MSG_TYPE_QUERY:
+                    self.__handle_query(client_sock, msg)
+                    break
         except OSError as e:
             logging.error(f'action: receive_message | result: fail | error: {e}')
             client_sock.close()
-            return
-        
-        if msg_type == MSG_TYPE_BATCH:
-            self.__handle_batch(client_sock, msg)
-        elif msg_type == MSG_TYPE_END:
-            self.__handle_end(client_sock)
-        elif msg_type == MSG_TYPE_QUERY:
-            self.__handle_query(client_sock, msg)
 
     def __handle_batch(self, sock, msg):
         bets, has_error = deserialize_batch(msg)
@@ -72,7 +73,6 @@ class Server:
         else:
             logging.info(f'action: apuesta_recibida | result: fail | cantidad: {len(bets)}')
             send_message(sock, MSG_ERROR, "")
-        sock.close()
 
     def __handle_end(self, end_sock):
         self._agencies_done += 1
