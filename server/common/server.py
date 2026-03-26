@@ -42,21 +42,22 @@ class Server:
         client socket will also be closed
         """
         try:
-            msg = receive_message(client_sock)
+            while True:
+                msg = receive_message(client_sock)
+                if msg is None:
+                    break
+                bets, has_error = deserialize_batch(msg)
+                store_bets(bets)
+                if not has_error:
+                    logging.info(f'action: apuesta_recibida | result: success | cantidad: {len(bets)}')
+                    send_message(client_sock, SUCCESS_MSG)
+                else:
+                    logging.error(f'action: apuesta_recibida | result: fail | cantidad: {len(bets)}')
+                    send_message(client_sock, ERROR_MSG)
         except OSError as e:
             logging.error(f'action: receive_message | result: fail | error: {e}')
+        finally:
             client_sock.close()
-            return
-        
-        bets, has_error = deserialize_batch(msg)
-        store_bets(bets)
-        if not has_error:
-            logging.info(f'action: apuesta_recibida | result: success | cantidad: {len(bets)}')
-            send_message(client_sock, SUCCESS_MSG)
-        else:
-            logging.error(f'action: apuesta_recibida | result: fail | cantidad: {len(bets)}')
-            send_message(client_sock, ERROR_MSG)
-        client_sock.close()
 
     def __accept_new_connection(self):
         """

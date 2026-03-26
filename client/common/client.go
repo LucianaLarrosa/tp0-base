@@ -66,6 +66,10 @@ func (c *Client) StartClientLoop(signalChannel chan os.Signal) {
 
 	reader := csv.NewReader(file)
 
+	if err := c.createClientSocket(); err != nil {
+		return
+	}
+
 	for {
 		select {
 		case <-signalChannel:
@@ -85,10 +89,6 @@ func (c *Client) StartClientLoop(signalChannel chan os.Signal) {
 			break
 		}
 
-		if err := c.createClientSocket(); err != nil {
-			return
-		}
-
 		// Send the batch to the server
 		if err := SendMessage(serializeBatch(batch), c.conn); err != nil {
 			log.Errorf("action: batch_enviado | result: fail | client_id: %v", c.config.ID)
@@ -97,14 +97,16 @@ func (c *Client) StartClientLoop(signalChannel chan os.Signal) {
 		}
 
 		confirmation, err := ReceiveMessage(c.conn)
-		if err != nil || confirmation == '0' {
+		if err != nil {
 			log.Errorf("action: batch_enviado | result: fail | client_id: %v", c.config.ID)
 			c.conn.Close()
 			return
 		}
-
-		log.Infof("action: batch_enviado | result: success | client_id: %v", c.config.ID)
-		c.conn.Close()
+		if confirmation == '0' {
+			log.Errorf("action: batch_enviado | result: fail | client_id: %v", c.config.ID)
+		} else {
+			log.Infof("action: batch_enviado | result: success | client_id: %v", c.config.ID)
+		}
 
 		select {
 		case <-signalChannel:
@@ -114,5 +116,6 @@ func (c *Client) StartClientLoop(signalChannel chan os.Signal) {
 		}
 
 	}
+	c.conn.Close()
 	log.Infof("action: loop_finished | result: success | client_id: %v", c.config.ID)
 }
