@@ -89,10 +89,15 @@ func (c *Client) StartClientLoop(signalChannel chan os.Signal) {
 
 	reader := csv.NewReader(file)
 
+	if err := c.createClientSocket(); err != nil {
+		return
+	}
+
 	for {
 		select {
 		case <-signalChannel:
 			log.Infof("action: shutdown | result: success | client_id: %v", c.config.ID)
+			c.conn.Close()
 			return
 		default:
 			// Continue with the normal execution
@@ -101,15 +106,12 @@ func (c *Client) StartClientLoop(signalChannel chan os.Signal) {
 		batch, err := readBatch(reader, c.config.ID, c.config.BatchMaxAmount)
 		if err != nil {
 			log.Errorf("action: read_file | result: fail | error: %v", err)
+			c.conn.Close()
 			return
 		}
 
 		if len(batch) == 0 {
 			break
-		}
-
-		if err := c.createClientSocket(); err != nil {
-			return
 		}
 
 		// Send the batch to the server
@@ -120,18 +122,21 @@ func (c *Client) StartClientLoop(signalChannel chan os.Signal) {
 		}
 
 		msgType, _, err := receiveMessage(c.conn)
-		if err != nil || msgType == MsgError {
+		if err != nil {
 			log.Errorf("action: batch_enviado | result: fail | client_id: %v", c.config.ID)
 			c.conn.Close()
 			return
 		}
-
-		log.Infof("action: batch_enviado | result: success | client_id: %v", c.config.ID)
-		c.conn.Close()
+		if msgType == MsgError {
+			log.Errorf("action: batch_enviado | result: fail | client_id: %v", c.config.ID)
+		} else {
+			log.Infof("action: batch_enviado | result: success | client_id: %v", c.config.ID)
+		}
 
 		select {
 		case <-signalChannel:
 			log.Infof("action: shutdown | result: success | client_id: %v", c.config.ID)
+			c.conn.Close()
 			return
 		case <-time.After(c.config.LoopPeriod):
 		}
@@ -139,9 +144,6 @@ func (c *Client) StartClientLoop(signalChannel chan os.Signal) {
 	}
 	log.Infof("action: loop_finished | result: success | client_id: %v", c.config.ID)
 
-	if err := c.createClientSocket(); err != nil {
-		return
-	}
 	if err := sendMessage(c.conn, MsgTypeEnd, c.config.ID); err != nil {
 		log.Errorf("action: send_end | result: fail | client_id: %v", c.config.ID)
 		c.conn.Close()
@@ -156,6 +158,7 @@ func (c *Client) StartClientLoop(signalChannel chan os.Signal) {
 	winners, err := c.queryWinners()
 	if err != nil {
 		log.Errorf("action: consulta_ganadores | result: fail | client_id: %v", c.config.ID)
+		c.conn.Close()
 		return
 	}
 	log.Infof("action: consulta_ganadores | result: success | cant_ganadores: %v", len(winners))
