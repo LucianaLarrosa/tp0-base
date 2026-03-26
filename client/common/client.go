@@ -74,6 +74,7 @@ func (c *Client) StartClientLoop(signalChannel chan os.Signal) {
 		select {
 		case <-signalChannel:
 			log.Infof("action: shutdown | result: success | client_id: %v", c.config.ID)
+			c.conn.Close()
 			return
 		default:
 			// Continue with the normal execution
@@ -82,6 +83,7 @@ func (c *Client) StartClientLoop(signalChannel chan os.Signal) {
 		batch, err := readBatch(reader, c.config.ID, c.config.BatchMaxAmount)
 		if err != nil {
 			log.Errorf("action: read_file | result: fail | error: %v", err)
+			c.conn.Close()
 			return
 		}
 
@@ -111,6 +113,7 @@ func (c *Client) StartClientLoop(signalChannel chan os.Signal) {
 		select {
 		case <-signalChannel:
 			log.Infof("action: shutdown | result: success | client_id: %v", c.config.ID)
+			c.conn.Close()
 			return
 		case <-time.After(c.config.LoopPeriod):
 		}
