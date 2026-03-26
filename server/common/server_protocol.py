@@ -2,7 +2,10 @@ import struct
 
 HEADER_SIZE = 5
 
+# Protocol format: [1 byte type][4 bytes length (big-endian)][N bytes body]
+
 def send_message(sock, msg_type, body):
+    """Sends a typed message over sock, handling short-writes."""
     body_bytes = body.encode()
     msg = msg_type.encode() + struct.pack('>I', len(body_bytes)) + body_bytes
     n_sent = 0
@@ -11,6 +14,8 @@ def send_message(sock, msg_type, body):
         n_sent += n
 
 def receive_message(sock):
+    """Reads a typed message from sock following the protocol format.
+    Returns (msg_type, body). Raises OSError if the connection is closed."""
     header = b''
     while len(header) < HEADER_SIZE:
         n_recv = sock.recv(HEADER_SIZE - len(header))
