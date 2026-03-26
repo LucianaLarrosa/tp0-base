@@ -2,10 +2,15 @@ import struct
 
 LENGTH_SIZE = 4
 
+# Protocol format: [4 bytes length (big-endian)][N bytes body]
+
 def send_message(sock, msg):
+    """Sends a raw bytes message over sock."""
     sock.send(msg)
 
 def receive_message(sock):
+    """Reads a message from sock following the protocol format.
+    Returns the decoded message body, or None if the connection was closed."""
     len_recv_byte = b''
     while len(len_recv_byte) < LENGTH_SIZE:
         bytes_recv = sock.recv(LENGTH_SIZE - len(len_recv_byte))

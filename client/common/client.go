@@ -36,9 +36,8 @@ func NewClient(config ClientConfig) *Client {
 	return client
 }
 
-// CreateClientSocket Initializes client socket. In case of
-// failure, error is printed in stdout/stderr and exit 1
-// is returned
+// createClientSocket connects to the server with up to 5 retries.
+// On success, stores the connection in c.conn.
 func (c *Client) createClientSocket() error {
 	maxRetries := 5
 	for i := 0; i < maxRetries; i++ {
@@ -54,7 +53,9 @@ func (c *Client) createClientSocket() error {
 	return fmt.Errorf("Could not connect after %d retries", maxRetries)
 }
 
-// StartClientLoop Send messages to the client until some time threshold is met
+// StartClientLoop reads bets from the agency CSV file, sends them in batches
+// over a single connection, and closes it when all data has been sent.
+// Stops early on SIGTERM or communication error.
 func (c *Client) StartClientLoop(signalChannel chan os.Signal) {
 	filepath := fmt.Sprintf("/data/agency-%s.csv", c.config.ID)
 	file, err := os.Open(filepath)
