@@ -254,10 +254,10 @@ Los tipos de mensaje son:
 * `W`: respuesta de ganadores
 
 **Flujo de sorteo:**
-1. El cliente abre una conexión y envía todos sus batches (igual que en el ejercicio 6 pero ahora con tipo B) sobre ella, esperando la confirmación por cada uno.
-2. Al terminar, envía el mensaje de tipo E con su ID de agencia, sobre la misma conexión y la cierra.
+1. El cliente abre una conexión y envía todos sus batches (igual que en el ejercicio 6 pero ahora con tipo `B`) sobre ella, esperando la confirmación por cada uno.
+2. Al terminar, envía el mensaje de tipo `E` con su ID de agencia, sobre la misma conexión y la cierra.
 3. El servidor cuenta los ENDs recibidos. Cuando llegan las N confirmaciones, realiza el sorteo: carga todas las apuestas con `load_bets()`, calcula los ganadores por agencia con `has_won()` y los almacena. 
-4. El cliente abre una nueva conexión y envía un mensaje de tipo Q con su ID para consultar sus ganadores.
+4. El cliente abre una nueva conexión y envía un mensaje de tipo `Q` con su ID para consultar sus ganadores.
 5. Si el sorteo ya se realizó, el servidor responde con tipo `W` y los DNIs ganadores separados por coma. Si no, guarda el socket y responde cuando el sorteo esté listo. En este caso, el socket queda abierto hasta que el servidor complete el sorteo, momento en el que responde automaticamente sin necesidad de que el cliente reenvíe la consulta.
 6. El cliente loguea: `action: consulta_ganadores | result: success | cant_ganadores: ${cantidad}`. 
 
