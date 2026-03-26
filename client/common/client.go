@@ -136,6 +136,7 @@ func (c *Client) StartClientLoop(signalChannel chan os.Signal) {
 		select {
 		case <-signalChannel:
 			log.Infof("action: shutdown | result: success | client_id: %v", c.config.ID)
+			c.conn.Close()
 			return
 		case <-time.After(c.config.LoopPeriod):
 		}
