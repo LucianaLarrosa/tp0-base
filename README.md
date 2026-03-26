@@ -224,7 +224,7 @@ Para garantizar que todos los bytes se transmitan correctamente, tanto el envío
 Se separó la lógica del protocolo en 2 archivos: `client_protocol.go` y `server_protocol.py`. 
 
 ### Ejercicio 6
-En este ejercicio se modificó el cliente para enviar apuestas en batches. El cliente lee el archivo CSV de su agencia y arma batches de apuestas que envía al servidor en una sola conexión.
+En este ejercicio se modificó el cliente para enviar apuestas en batches. El cliente lee el archivo CSV de su agencia, arma batches y los envía todos sobre una única conexión TCP: abre la conexión al inicio, envía cada batch y espera su confirmación, y finalmente cierra la conexión al enviar todos los datos. El servidor mantiene la conexión abierta procesando batches en un loop hasta detectar que el cliente la cerró.
 
 La cantidad máxima de apuestas por batch es configurable desde `config.yaml`. Se limita a 100 apuestas para garantizar que los paquetes no superen los 8kB (asumiendo un tamaño máximo de 80 bytes por apuesta: 100 x 80 = 8000 bytes < 8192 bytes). 
 
@@ -248,9 +248,9 @@ Los tipos de mensaje son:
 * `W`: respuesta de ganadores
 
 **Flujo de sorteo:**
-1. El cliente envía todos sus batches (igual que en el ejercicio 6 pero ahora con tipo `B`).
-2. Al terminar, envía un mensaje de tipo `E` con su ID de agencia.
+1. El cliente abre una conexión y envía todos sus batches (igual que en el ejercicio 6 pero ahora con tipo `B`) sobre ella, esperando la confirmación por cada uno.
+2. Al terminar, envía el mensaje de tipo `E` con su ID de agencia, sobre la misma conexión y la cierra.
 3. El servidor cuenta los ENDs recibidos. Cuando llegan las N confirmaciones, realiza el sorteo: carga todas las apuestas con `load_bets()`, calcula los ganadores por agencia con `has_won()` y los almacena. 
-4. El cliente envía un mensaje de tipo `Q` con su ID para consultar sus ganadores.
+4. El cliente abre una nueva conexión y envía un mensaje de tipo `Q` con su ID para consultar sus ganadores.
 5. Si el sorteo ya se realizó, el servidor responde con tipo `W` y los DNIs ganadores separados por coma. Si no, guarda el socket y responde cuando el sorteo esté listo. En este caso, el socket queda abierto hasta que el servidor complete el sorteo, momento en el que responde automaticamente sin necesidad de que el cliente reenvíe la consulta.
 6. El cliente loguea: `action: consulta_ganadores | result: success | cant_ganadores: ${cantidad}`. 
