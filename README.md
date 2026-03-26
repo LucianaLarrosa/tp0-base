@@ -230,7 +230,7 @@ Para garantizar que todos los bytes se transmitan correctamente, tanto el envío
 Se separó la lógica del protocolo en 2 archivos: `client_protocol.go` y `server_protocol.py`. 
 
 ### Ejercicio 6
-En este ejercicio se modificó el cliente para enviar apuestas en batches. El cliente lee el archivo CSV de su agencia y arma batches de apuestas que envía al servidor en una sola conexión.
+En este ejercicio se modificó el cliente para enviar apuestas en batches. El cliente lee el archivo CSV de su agencia, arma batches y los envía todos sobre una única conexión TCP: abre la conexión al inicio, envía cada batch y espera su confirmación, y finalmente cierra la conexión al enviar todos los datos. El servidor mantiene la conexión abierta procesando batches en un loop hasta detectar que el cliente la cerró.
 
 La cantidad máxima de apuestas por batch es configurable desde `config.yaml`. Se limita a 100 apuestas para garantizar que los paquetes no superen los 8kB (asumiendo un tamaño máximo de 80 bytes por apuesta: 100 x 80 = 8000 bytes < 8192 bytes). 
 
@@ -254,10 +254,10 @@ Los tipos de mensaje son:
 * `W`: respuesta de ganadores
 
 **Flujo de sorteo:**
-1. El cliente envía todos sus batches (igual que en el ejercicio 6 pero ahora con tipo `B`).
-2. Al terminar, envía un mensaje de tipo `E` con su ID de agencia.
+1. El cliente abre una conexión y envía todos sus batches (igual que en el ejercicio 6 pero ahora con tipo B) sobre ella, esperando la confirmación por cada uno.
+2. Al terminar, envía el mensaje de tipo E con su ID de agencia, sobre la misma conexión y la cierra.
 3. El servidor cuenta los ENDs recibidos. Cuando llegan las N confirmaciones, realiza el sorteo: carga todas las apuestas con `load_bets()`, calcula los ganadores por agencia con `has_won()` y los almacena. 
-4. El cliente envía un mensaje de tipo `Q` con su ID para consultar sus ganadores.
+4. El cliente abre una nueva conexión y envía un mensaje de tipo Q con su ID para consultar sus ganadores.
 5. Si el sorteo ya se realizó, el servidor responde con tipo `W` y los DNIs ganadores separados por coma. Si no, guarda el socket y responde cuando el sorteo esté listo. En este caso, el socket queda abierto hasta que el servidor complete el sorteo, momento en el que responde automaticamente sin necesidad de que el cliente reenvíe la consulta.
 6. El cliente loguea: `action: consulta_ganadores | result: success | cant_ganadores: ${cantidad}`. 
 
@@ -269,6 +269,5 @@ Se implementó un pool de threads fijo: al iniciar el servidor se crean N worker
 Para el shutdown graceful, al recibir SIGTERM se encola un `None` por cada worker como señal de terminación. Cada worker al recibir el `None` sale de su loop y el thread principal los joinea para esperar que terminen limpiamente. 
 
 **Mecanismos de sincronización:**
-* `threading.Lock`: protege las secciones críticas: `store_bets` (varios clientes pueden querer guardar sus apuestas al mismo tiempo) y el contador `_agencies_done` (para que no haya inconsistencias si 2 clientes intentan incrementarla al mismo tiempo). De esta forma evitamos que múltiples threads escriban simultáneamente o lean un estado inconsistente del contador. 
-* `threading.Event`: sincroniza el flujo del sorteo. Los threads que reciben una consulta de ganadores (`Q`), antes de que se haya realizado el sorteo, se bloquean en `event.wait()` hasta que el sorteo se complete. Cuando el último `END` llega y el sorteo finaliza, el thread llama `event.set()` desbloqueando a todos los threads de `QUERY` simultáneamente. A su vez, si una consulta llega después de que el sorteo ya se realizó (ya se hizo el `set()`), el `wait()` no bloquea ya que el evento mantiene su estado activo permanentemente. 
-Por otro lado, la lectura concurrente de `_winners` (diccionario que almacena los resultados del sorteo) por múltiples threads no requiere protección adicional, ya que el diccionario se escribe una única vez antes de activar el evento y luego solo se lee. 
+* `threading.Lock`: protege `store_bets` para evitar que múltiples threads escriban apuestas simultáneamente. 
+* `threading.Condition`: sincroniza el flujo del sorteo. Los threads de `QUERY` se bloquean en `wait_for(lambda: self._sorteo_done)` hasta que el sorteo se complete. Cuando el último `END` llega, el thread hace `notify_all()` desbloqueando a todos los threads de `QUERY`. La condition también protege el contador `_agencies_done` y el flag `_sorteo_done`. Por otro lado, la lectura concurrente de `_winners` (diccionario que almacena los resultados del sorteo) por múltiples threads no requiere protección adicional, ya que el diccionario se escribe una única vez antes de llamar a `notify_all()` y luego solo se lee.
