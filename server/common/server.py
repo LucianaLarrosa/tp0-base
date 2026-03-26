@@ -22,8 +22,9 @@ class Server:
         self._total_agencies = agencies
         self._agencies_done = 0
         self._winners = {} #agencyID: [winners]
-        self._sorteo_event = threading.Event()
         self._lock = threading.Lock()
+        self._condition = threading.Condition()
+        self._sorteo_done = False
         self._queue = queue.Queue()
         self._workers = []
 
@@ -93,16 +94,17 @@ class Server:
             send_message(sock, MSG_ERROR, "")
 
     def __handle_end(self, end_sock):
-        with self._lock:
+        with self._condition:
             self._agencies_done += 1
-            is_last = self._agencies_done == self._total_agencies
-        if is_last:
-            self.__do_sorteo()
-            self._sorteo_event.set()
+            if self._agencies_done == self._total_agencies:
+                self.__do_sorteo()
+                self._sorteo_done = True
+                self._condition.notify_all()
         end_sock.close()
 
     def __handle_query(self, sock, agency_id):
-        self._sorteo_event.wait()
+        with self._condition:
+            self._condition.wait_for(lambda: self._sorteo_done)
         self.__notify_agency(sock, agency_id)
     
     def __do_sorteo(self):
